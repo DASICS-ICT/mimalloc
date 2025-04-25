@@ -10,6 +10,11 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #define MI_MALLOC_VERSION 222   // major + 2 digits minor
 
+// TODO: add options FOR DASICS ???
+#if !defined(MI_DASICS)
+#define MI_DASICS 0
+#endif 
+
 // ------------------------------------------------------
 // Compiler specific attributes
 // ------------------------------------------------------
@@ -322,6 +327,22 @@ mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_ex(int heap_tag, bool al
 mi_decl_export int mi_reserve_huge_os_pages(size_t pages, double max_secs, size_t* pages_reserved) mi_attr_noexcept;
 mi_decl_export void mi_collect_reduce(size_t target_thread_owned) mi_attr_noexcept;
 
+
+// ------------------------------------------------------
+// TODO: APIs FOR DASICS  
+// ------------------------------------------------------
+#if MI_DASICS
+// Standard malloc interface, currently only includes malloc and free
+mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_malloc_dasics(size_t size, uint32_t library_id, uint32_t closure_id)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
+mi_decl_export void mi_free_dasics(void* p, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
+// Heap 
+mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_dasics(uint32_t library_id);
+mi_decl_export void mi_heap_delete_dasics(mi_heap_t* heap, uint32_t library_id);
+mi_decl_export void mi_heap_destroy_dasics(mi_heap_t* heap, uint32_t library_id);
+// Fucntions for getting counters 
+mi_decl_export int mi_get_alloc_count_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
+mi_decl_export int mi_get_free_count_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
+#endif
 
 
 // ------------------------------------------------------

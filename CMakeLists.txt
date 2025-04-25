@@ -35,6 +35,9 @@ option(MI_INSTALL_TOPLEVEL  "Install directly into $CMAKE_INSTALL_PREFIX instead
 option(MI_NO_THP            "Disable transparent huge pages support on Linux/Android for the mimalloc process only" OFF)
 option(MI_EXTRA_CPPDEFS     "Extra pre-processor definitions (use as `-DMI_EXTRA_CPPDEFS=\"opt1=val1;opt2=val2\"`)" "")
 
+# TODO: add options FOR DASICS
+option(MI_DASICS            "Use extra functions and parameters FOR DASICS" ON)
+
 # negated options for vcpkg features
 option(MI_NO_USE_CXX        "Use plain C compilation (has priority over MI_USE_CXX)" OFF)
 option(MI_NO_OPT_ARCH       "Do not use architecture specific optimizations (like '-march=armv8.1-a' for example) (has priority over MI_OPT_ARCH)" OFF)
@@ -273,6 +276,12 @@ if(MI_GUARDED)
     message(STATUS "  Disabling padding due to guard pages (MI_NO_PADDING=ON)")
     set(MI_NO_PADDING ON)
   endif()
+endif()
+
+# TODO：add DASICS options 
+if(MI_DASICS)
+  message(STATUS "Compile DASICS extra functions (MI_DASICS=ON)")
+  list(APPEND mi_defines MI_DASICS=1)
 endif()
 
 if(MI_SEE_ASM)
@@ -530,6 +539,10 @@ endif()
 if(MI_TRACK_ASAN)
   set(mi_libname "${mi_libname}-asan")
 endif()
+# TODO: add DASICS version library name
+if(MI_DASICS)
+  set(mi_libname "${mi_libname}-dasics")
+endif()
 string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LC)
 list(APPEND mi_defines "MI_CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE_LC}")  #todo: multi-config project needs $<CONFIG> ?
 if(NOT(CMAKE_BUILD_TYPE_LC MATCHES "^(release|relwithdebinfo|minsizerel|none)$"))
@@ -702,7 +715,7 @@ if (MI_BUILD_TESTS)
   enable_testing()
 
   # static link tests
-  foreach(TEST_NAME api api-fill stress)
+  foreach(TEST_NAME api api-fill stress dasics)
     add_executable(mimalloc-test-${TEST_NAME} test/test-${TEST_NAME}.c)
     target_compile_definitions(mimalloc-test-${TEST_NAME} PRIVATE ${mi_defines})
     target_compile_options(mimalloc-test-${TEST_NAME} PRIVATE ${mi_cflags})

@@ -21,6 +21,10 @@ const mi_page_t _mi_page_empty = {
   { 0 },   // flags
   false,   // is_zero
   0,       // retire_expire
+  #if MI_DASICS
+  0,       // library id FOR DASICS
+  0,       // closure id FOR DASICS
+  #endif 
   NULL,    // free
   NULL,    // local_free
   0,       // used
@@ -112,8 +116,8 @@ mi_decl_hidden mi_decl_cache_align const mi_heap_t _mi_heap_empty = {
   NULL,
   MI_ATOMIC_VAR_INIT(NULL),
   0,                // tid
-  0,                // cookie
   0,                // arena id
+  0,                // cookie
   { 0, 0 },         // keys
   { {0}, {0}, 0, true }, // random
   0,                // page count
@@ -124,6 +128,10 @@ mi_decl_hidden mi_decl_cache_align const mi_heap_t _mi_heap_empty = {
   0,                // tag
   #if MI_GUARDED
   0, 0, 0, 0, 1,    // count is 1 so we never write to it (see `internal.h:mi_heap_malloc_use_guarded`)
+  #endif
+  #if MI_DASICS
+  0,                // library id FOR DASICS
+  0, 0,             // alloc/free count FOR DASICS
   #endif
   MI_SMALL_PAGES_EMPTY,
   MI_PAGE_QUEUES_EMPTY
@@ -161,8 +169,8 @@ mi_decl_cache_align mi_heap_t _mi_heap_main = {
   &tld_main,
   MI_ATOMIC_VAR_INIT(NULL),
   0,                // thread id
-  0,                // initial cookie
   0,                // arena id
+  0,                // initial cookie
   { 0, 0 },         // the key of the main heap can be fixed (unlike page keys that need to be secure!)
   { {0x846ca68b}, {0}, 0, true },  // random
   0,                // page count
@@ -173,6 +181,10 @@ mi_decl_cache_align mi_heap_t _mi_heap_main = {
   0,                // tag
   #if MI_GUARDED
   0, 0, 0, 0, 0,
+  #endif
+  #if MI_DASICS
+  0,                // library id FOR DASICS
+  0, 0,             // alloc/free count FOR DASICS
   #endif
   MI_SMALL_PAGES_EMPTY,
   MI_PAGE_QUEUES_EMPTY

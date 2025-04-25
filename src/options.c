@@ -531,6 +531,13 @@ void _mi_assert_fail(const char* assertion, const char* fname, unsigned line, co
 }
 #endif
 
+#if MI_DASICS
+void _mi_assert_fail_dasics(const char* assertion, const char* fname, unsigned line, const char* func ) {
+  _mi_fprintf(NULL, NULL, "mimalloc: dasics assertion failed: at \"%s\":%u, %s\n  dasics assertion: \"%s\"\n", fname, line, (func==NULL?"":func), assertion);
+  abort();
+}
+#endif
+
 // --------------------------------------------------------
 // Errors
 // --------------------------------------------------------

@@ -242,6 +242,12 @@ typedef uintptr_t  mi_encoded_t;
 // thread id's
 typedef size_t     mi_threadid_t;
 
+// Add closure id and library id FOR DASICS
+#if MI_DASICS
+typedef uint32_t  mi_closure_id_t; 
+typedef uint32_t  mi_library_id_t;
+#endif 
+
 // free lists contain blocks
 typedef struct mi_block_s {
   mi_encoded_t next;
@@ -331,6 +337,11 @@ typedef struct mi_page_s {
   mi_page_flags_t       flags;             // `in_full` and `has_aligned` flags (8 bits)
   uint8_t               free_is_zero:1;    // `true` if the blocks in the free list are zero initialized
   uint8_t               retire_expire:7;   // expiration count for retired blocks
+
+  #if MI_DASICS
+  mi_library_id_t       library_id;        // library id FOR DASICS
+  mi_closure_id_t       closure_id;        // function closure id FOR DASICS
+  #endif 
 
   mi_block_t*           free;              // list of available free blocks (`malloc` allocates from this list)
   mi_block_t*           local_free;        // list of deferred free blocks by this thread (migrates to `free`)
@@ -574,6 +585,11 @@ struct mi_heap_s {
   size_t                guarded_sample_seed;                 // starting sample count
   size_t                guarded_sample_count;                // current sample count (counting down to 0)
   #endif
+  #if MI_DASICS
+  mi_library_id_t       library_id;                          // library id FOR DASICS
+  long                  alloc_count;                         // how often is memory alloc is called (including generic alloc and small alloc), FOR DASICS
+  long                  free_count;                          // how often is free called, FOR DASICS
+  #endif 
   mi_page_t*            pages_free_direct[MI_PAGES_DIRECT];  // optimize: array where every entry points a page with possibly free blocks in the corresponding queue for that size.
   mi_page_queue_t       pages[MI_BIN_FULL + 1];              // queue of pages for each size class (or "bin")
 };
@@ -668,6 +684,12 @@ void _mi_assert_fail(const char* assertion, const char* fname, unsigned int line
 #define mi_assert_expensive(x)
 #endif
 
+// TODO: add assert FOR DASICS 
+#if (MI_DASICS) 
+// use our own assertion to print without memory allocation
+void _mi_assert_fail_dasics(const char* assertion, const char* fname, unsigned int line, const char* func );
+#define mi_assert_dasics(expr)     ((expr) ? (void)0 : _mi_assert_fail_dasics(#expr,__FILE__,__LINE__,__func__)) 
+#endif 
 
 // ------------------------------------------------------
 // Statistics

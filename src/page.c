@@ -1041,3 +1041,322 @@ void* _mi_malloc_generic(mi_heap_t* heap, size_t size, bool zero, size_t huge_al
   }
   return p;
 }
+
+// TODO: external functions FOR DASICS 
+#if MI_DASICS
+// allocate a fresh page from a segment
+static mi_page_t* mi_page_fresh_alloc_dasics(mi_heap_t* heap, mi_page_queue_t* pq, size_t block_size, size_t page_alignment, uint32_t library_id, uint32_t closure_id) {
+  #if !MI_HUGE_PAGE_ABANDON
+  mi_assert_internal(pq != NULL);
+  mi_assert_internal(mi_heap_contains_queue(heap, pq));
+  mi_assert_internal(page_alignment > 0 || block_size > MI_MEDIUM_OBJ_SIZE_MAX || block_size == pq->block_size);
+  #endif
+  mi_page_t* page = _mi_segment_page_alloc(heap, block_size, page_alignment, &heap->tld->segments);
+  if (page == NULL) {
+    // this may be out-of-memory, or an abandoned page was reclaimed (and in our queue)
+    return NULL;
+  }
+  #if MI_HUGE_PAGE_ABANDON
+  mi_assert_internal(pq==NULL || _mi_page_segment(page)->page_kind != MI_PAGE_HUGE);
+  #endif
+  mi_assert_internal(page_alignment >0 || block_size > MI_MEDIUM_OBJ_SIZE_MAX || _mi_page_segment(page)->kind != MI_SEGMENT_HUGE);
+  mi_assert_internal(pq!=NULL || mi_page_block_size(page) >= block_size);
+  // a fresh page was found, initialize it
+  const size_t full_block_size = (pq == NULL || mi_page_is_huge(page) ? mi_page_block_size(page) : block_size); // see also: mi_segment_huge_page_alloc
+  mi_assert_internal(full_block_size >= block_size);
+  mi_page_init(heap, page, full_block_size, heap->tld);
+  mi_heap_stat_increase(heap, pages, 1);
+  mi_heap_stat_increase(heap, page_bins[mi_page_bin(page)], 1);
+  if (pq != NULL) { mi_page_queue_push(heap, pq, page); }
+  mi_assert_expensive(_mi_page_is_valid(page));
+
+  page->library_id = library_id;
+  page->closure_id = closure_id;
+
+  return page;
+}
+
+// Get a fresh page to use
+static mi_page_t* mi_page_fresh_dasics(mi_heap_t* heap, mi_page_queue_t* pq, uint32_t library_id, uint32_t closure_id) {
+  mi_assert_internal(mi_heap_contains_queue(heap, pq));
+  mi_page_t* page = mi_page_fresh_alloc_dasics(heap, pq, pq->block_size, 0, library_id, closure_id);
+  if (page==NULL) return NULL;
+  mi_assert_internal(pq->block_size==mi_page_block_size(page));
+  mi_assert_internal(pq==mi_page_queue(heap, mi_page_block_size(page)));
+  return page;
+}
+
+
+// Large and huge page allocation.
+// Huge pages contain just one block, and the segment contains just that page (as `MI_SEGMENT_HUGE`).
+// Huge pages are also use if the requested alignment is very large (> MI_BLOCK_ALIGNMENT_MAX)
+// so their size is not always `> MI_LARGE_OBJ_SIZE_MAX`.
+static mi_page_t* mi_large_huge_page_alloc_dasics(mi_heap_t* heap, size_t size, size_t page_alignment, uint32_t library_id, uint32_t closure_id) {
+  size_t block_size = _mi_os_good_alloc_size(size);
+  mi_assert_internal(mi_bin(block_size) == MI_BIN_HUGE || page_alignment > 0);
+  bool is_huge = (block_size > MI_LARGE_OBJ_SIZE_MAX || page_alignment > 0);
+  #if MI_HUGE_PAGE_ABANDON
+  mi_page_queue_t* pq = (is_huge ? NULL : mi_page_queue(heap, block_size));
+  #else
+  mi_page_queue_t* pq = mi_page_queue(heap, is_huge ? MI_LARGE_OBJ_SIZE_MAX+1 : block_size);
+  mi_assert_internal(!is_huge || mi_page_queue_is_huge(pq));
+  #endif
+  mi_page_t* page = mi_page_fresh_alloc_dasics(heap, pq, block_size, page_alignment, library_id, closure_id);
+  if (page != NULL) {
+    mi_assert_internal(mi_page_immediate_available(page));
+
+    if (is_huge) {
+      mi_assert_internal(mi_page_is_huge(page));
+      mi_assert_internal(_mi_page_segment(page)->kind == MI_SEGMENT_HUGE);
+      mi_assert_internal(_mi_page_segment(page)->used==1);
+      #if MI_HUGE_PAGE_ABANDON
+      mi_assert_internal(_mi_page_segment(page)->thread_id==0); // abandoned, not in the huge queue
+      mi_page_set_heap(page, NULL);
+      #endif
+    }
+    else {
+      mi_assert_internal(!mi_page_is_huge(page));
+    }
+
+    const size_t bsize = mi_page_usable_block_size(page);  // note: not `mi_page_block_size` to account for padding
+    /*if (bsize <= MI_LARGE_OBJ_SIZE_MAX) {
+      mi_heap_stat_increase(heap, malloc_large, bsize);
+      mi_heap_stat_counter_increase(heap, malloc_large_count, 1);
+    }
+    else */
+    {
+      _mi_stat_increase(&heap->tld->stats.malloc_huge, bsize);
+      _mi_stat_counter_increase(&heap->tld->stats.malloc_huge_count, 1);
+    }
+  }
+
+  return page;
+}
+
+// Find a page with free blocks of `page->block_size`.
+static mi_page_t* mi_page_queue_find_free_ex_dasics(mi_heap_t* heap, mi_page_queue_t* pq, bool first_try, uint32_t library_id, uint32_t closure_id)
+{
+  // search through the pages in "next fit" order
+  #if MI_STAT
+  size_t count = 0;
+  #endif
+  size_t candidate_count = 0;        // we reset this on the first candidate to limit the search
+  mi_page_t* page_candidate = NULL;  // a page with free space
+  mi_page_t* page = pq->first;
+
+  while (page != NULL)
+  {
+    mi_page_t* next = page->next; // remember next
+    #if MI_STAT
+    count++;
+    #endif
+    candidate_count++;
+
+    // collect freed blocks by us and other threads
+    _mi_page_free_collect(page, false);
+
+    // check FOR DASICS
+    if (page->library_id != library_id || page->closure_id != closure_id) {
+      page = page->next;
+      continue;
+    }
+
+  #if MI_MAX_CANDIDATE_SEARCH > 1
+    // search up to N pages for a best candidate
+
+    // is the local free list non-empty?
+    const bool immediate_available = mi_page_immediate_available(page);
+
+    // if the page is completely full, move it to the `mi_pages_full`
+    // queue so we don't visit long-lived pages too often.
+    if (!immediate_available && !mi_page_is_expandable(page)) {
+      mi_assert_internal(!mi_page_is_in_full(page) && !mi_page_immediate_available(page));
+      mi_page_to_full(page, pq);
+    }
+    else {
+
+      // the page has free space, make it a candidate
+      // we prefer non-expandable pages with high usage as candidates (to reduce commit, and increase chances of free-ing up pages)
+      if (page_candidate == NULL) {
+        page_candidate = page;
+        candidate_count = 0;
+      }
+      // prefer to reuse fuller pages (in the hope the less used page gets freed)
+      else if (page->used >= page_candidate->used && !mi_page_is_mostly_used(page) && !mi_page_is_expandable(page)) {
+        page_candidate = page;
+      }
+      // if we find a non-expandable candidate, or searched for N pages, return with the best candidate
+      if (immediate_available || candidate_count > MI_MAX_CANDIDATE_SEARCH) {
+        mi_assert_internal(page_candidate!=NULL);
+        break;
+      }
+    }
+  #else
+    // first-fit algorithm
+    // If the page contains free blocks, we are done
+    if (mi_page_immediate_available(page) || mi_page_is_expandable(page)) {
+      break;  // pick this one
+    }
+
+    // If the page is completely full, move it to the `mi_pages_full`
+    // queue so we don't visit long-lived pages too often.
+    mi_assert_internal(!mi_page_is_in_full(page) && !mi_page_immediate_available(page));
+    mi_page_to_full(page, pq);
+  #endif
+
+    page = next;
+  } // for each page
+
+  mi_heap_stat_counter_increase(heap, page_searches, count);
+
+  // set the page to the best candidate
+  if (page_candidate != NULL) {
+    page = page_candidate;
+  }
+  if (page != NULL && !mi_page_immediate_available(page)) {
+    mi_assert_internal(mi_page_is_expandable(page));
+    mi_page_extend_free(heap, page, heap->tld);
+  }
+
+  if (page == NULL) {
+    _mi_heap_collect_retired(heap, false); // perhaps make a page available?
+    page = mi_page_fresh_dasics(heap, pq, library_id, closure_id);
+    if (page == NULL && first_try) {
+      // out-of-memory _or_ an abandoned page with free blocks was reclaimed, try once again
+      page = mi_page_queue_find_free_ex_dasics(heap, pq, false, library_id, closure_id);
+    }
+  }
+  else {
+    // move the page to the front of the queue
+    mi_page_queue_move_to_front(heap, pq, page);
+    page->retire_expire = 0;
+    // _mi_heap_collect_retired(heap, false); // update retire counts; note: increases rss on MemoryLoad bench so don't do this
+  }
+  mi_assert_internal(page == NULL || mi_page_immediate_available(page));
+
+
+  return page;
+}
+
+// Find a page with free blocks of `size`.
+static inline mi_page_t* mi_find_free_page_dasics(mi_heap_t* heap, size_t size, uint32_t library_id, uint32_t closure_id) {
+  mi_page_queue_t* pq = mi_page_queue(heap, size);
+
+  // check the first page: we even do this with candidate search or otherwise we re-search every time
+  mi_page_t* page = pq->first;
+
+  if (page != NULL) {
+    //FIXBUG: add id check here, else different closure share same page 
+    if (page->library_id != library_id || page->closure_id != closure_id) {
+      return mi_page_queue_find_free_ex_dasics(heap, pq, true, library_id, closure_id);
+    }
+
+   #if (MI_SECURE>=3) // in secure mode, we extend half the time to increase randomness
+    if (page->capacity < page->reserved && ((_mi_heap_random_next(heap) & 1) == 1)) {
+      mi_page_extend_free(heap, page, heap->tld);
+      mi_assert_internal(mi_page_immediate_available(page));
+    }
+    else
+   #endif
+    {
+      _mi_page_free_collect(page,false);
+    }
+
+    if (mi_page_immediate_available(page)) {
+      page->retire_expire = 0;
+      return page; // fast path
+    }
+  }
+
+  return mi_page_queue_find_free_ex_dasics(heap, pq, true, library_id, closure_id);
+}
+
+// Allocate a page
+// Note: in debug mode the size includes MI_PADDING_SIZE and might have overflowed.
+static mi_page_t* mi_find_page_dasics(mi_heap_t* heap, size_t size, size_t huge_alignment, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  // huge allocation?
+  const size_t req_size = size - MI_PADDING_SIZE;  // correct for padding_size in case of an overflow on `size`
+  if mi_unlikely(req_size > (MI_MEDIUM_OBJ_SIZE_MAX - MI_PADDING_SIZE) || huge_alignment > 0) {
+    if mi_unlikely(req_size > MI_MAX_ALLOC_SIZE) {
+      _mi_error_message(EOVERFLOW, "allocation request is too large (%zu bytes)\n", req_size);
+      return NULL;
+    }
+    else {
+      return mi_large_huge_page_alloc_dasics(heap,size,huge_alignment, library_id, closure_id);
+    }
+  }
+  else {
+    // otherwise find a page with free blocks in our size segregated queues
+    #if MI_PADDING
+    mi_assert_internal(size >= MI_PADDING_SIZE);
+    #endif
+    return mi_find_free_page_dasics(heap, size, library_id, closure_id);
+  }
+}
+
+
+void* _mi_malloc_generic_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept
+{
+  mi_assert_internal(heap != NULL);
+
+  // initialize if necessary
+  if mi_unlikely(!mi_heap_is_initialized(heap)) {
+    heap = mi_heap_get_default(); // calls mi_thread_init
+    if mi_unlikely(!mi_heap_is_initialized(heap)) { return NULL; }
+  }
+  mi_assert_internal(mi_heap_is_initialized(heap));
+
+  // do administrative tasks every N generic mallocs
+  if mi_unlikely(++heap->generic_count >= 100) {
+    heap->generic_collect_count += heap->generic_count;
+    heap->generic_count = 0;
+    // call potential deferred free routines
+    _mi_deferred_free(heap, false);
+
+    // free delayed frees from other threads (but skip contended ones)
+    _mi_heap_delayed_free_partial(heap);
+    
+    // collect every once in a while (10000 by default)
+    const long generic_collect = mi_option_get_clamp(mi_option_generic_collect, 1, 1000000L);    
+    if (heap->generic_collect_count >= generic_collect) {
+      heap->generic_collect_count = 0;
+      mi_heap_collect(heap, false /* force? */);
+    }
+  }
+
+  // find (or allocate) a page of the right size
+  mi_page_t* page = mi_find_page_dasics(heap, size, huge_alignment, library_id, closure_id);
+  if mi_unlikely(page == NULL) { // first time out of memory, try to collect and retry the allocation once more
+    mi_heap_collect(heap, true /* force */);
+    page = mi_find_page_dasics(heap, size, huge_alignment, library_id, closure_id);
+  }
+
+  if mi_unlikely(page == NULL) { // out of memory
+    const size_t req_size = size - MI_PADDING_SIZE;  // correct for padding_size in case of an overflow on `size`
+    _mi_error_message(ENOMEM, "unable to allocate memory (%zu bytes)\n", req_size);
+    return NULL;
+  }
+
+  mi_assert_internal(mi_page_immediate_available(page));
+  mi_assert_internal(mi_page_block_size(page) >= size);
+
+  // and try again, this time succeeding! (i.e. this should never recurse through _mi_page_malloc)
+  void* p;
+  if mi_unlikely(zero && mi_page_is_huge(page)) {
+    // note: we cannot call _mi_page_malloc with zeroing for huge blocks; we zero it afterwards in that case.
+    p = _mi_page_malloc(heap, page, size);
+    mi_assert_internal(p != NULL);
+    _mi_memzero_aligned(p, mi_page_usable_block_size(page));
+  }
+  else {
+    p = _mi_page_malloc_zero(heap, page, size, zero);
+    mi_assert_internal(p != NULL);
+  }
+  // move singleton pages to the full queue
+  if (page->reserved == page->used) {
+    mi_page_to_full(page, mi_page_queue_of(page));
+  }
+  return p;
+}
+
+#endif 

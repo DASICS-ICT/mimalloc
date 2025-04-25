@@ -679,6 +679,130 @@ mi_decl_restrict void* _mi_heap_malloc_guarded(mi_heap_t* heap, size_t size, boo
 }
 #endif
 
+// TODO: add malloc functions FOR DASICS
+#if MI_DASICS
+mi_heap_t* _mi_find_match_heap_dasics(uint32_t library_id) {
+  // different from default malloc function, we should search heap for same library id
+  mi_heap_t *heap = mi_prim_get_default_heap();
+  // NOTE: If we add additional heaps, default heap is the last heap of tld heaps list, 
+  //       since new heap is added to list head
+  mi_heap_t *first_heap = heap->tld->heaps;  // switch to heap list head
+  // searching matching heap (default library id is 0, for user main function)
+  while (first_heap != NULL) {
+    if (first_heap->library_id == library_id) break;
+    first_heap = first_heap->next;
+  }
+  return first_heap;
+}
+
+// following functions are modified for external parameters
+static inline mi_decl_restrict void* mi_heap_malloc_small_zero_dasics(mi_heap_t* heap, size_t size, bool zero, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_assert(heap != NULL);
+  mi_assert(size <= MI_SMALL_SIZE_MAX);
+  #if MI_DEBUG
+  const uintptr_t tid = _mi_thread_id();
+  mi_assert(heap->thread_id == 0 || heap->thread_id == tid); // heaps are thread local
+  #endif
+  #if (MI_PADDING || MI_GUARDED)
+  if (size == 0) { size = sizeof(void*); }
+  #endif
+  #if MI_GUARDED //currently discared
+  if (mi_heap_malloc_use_guarded(heap,size)) {
+    return _mi_heap_malloc_guarded(heap, size, zero);
+  }
+  #endif
+
+  // get page in constant time, and allocate from it
+  mi_page_t* page = _mi_heap_get_free_small_page(heap, size + MI_PADDING_SIZE);
+  // TODO: check page ids ???
+  if (page->library_id != library_id || page->closure_id != closure_id) {
+      return NULL;
+  }
+
+  void* const p = _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
+  mi_track_malloc(p,size,zero);
+
+  #if MI_STAT>1
+  if (p != NULL) {
+    if (!mi_heap_is_initialized(heap)) { heap = mi_prim_get_default_heap(); }
+    mi_heap_stat_increase(heap, malloc_requested, mi_usable_size(p));
+  }
+  #endif
+  #if MI_DEBUG>3
+  if (p != NULL && zero) {
+    mi_assert_expensive(mi_mem_is_zero(p, size));
+  }
+  #endif
+  return p;
+}
+
+// allocate a small block
+mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_small_dasics(mi_heap_t* heap, size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  return mi_heap_malloc_small_zero_dasics(heap, size, false, library_id, closure_id);
+}
+
+// The main allocation function
+extern inline void* _mi_heap_malloc_zero_ex_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  // fast path for small objects
+  if mi_likely(size <= MI_SMALL_SIZE_MAX) {
+    mi_assert_internal(huge_alignment == 0);
+    void* small_block_ptr = mi_heap_malloc_small_zero_dasics(heap, size, zero, library_id, closure_id);
+    return small_block_ptr;
+  }
+  #if MI_GUARDED // currenty discard
+  else if (huge_alignment==0 && mi_heap_malloc_use_guarded(heap,size)) {
+    return _mi_heap_malloc_guarded(heap, size, zero);
+  }
+  #endif
+  else {
+    // regular allocation
+    mi_assert(heap!=NULL);
+    mi_assert(heap->thread_id == 0 || heap->thread_id == _mi_thread_id());   // heaps are thread local
+    void* const p = _mi_malloc_generic_dasics(heap, size + MI_PADDING_SIZE, zero, huge_alignment, library_id, closure_id);  // note: size can overflow but it is detected in malloc_generic
+    mi_track_malloc(p,size,zero);
+
+    #if MI_STAT>1 // currently discard
+    if (p != NULL) {
+      if (!mi_heap_is_initialized(heap)) { heap = mi_prim_get_default_heap(); }
+      mi_heap_stat_increase(heap, malloc_requested, mi_usable_size(p));
+    }
+    #endif
+    #if MI_DEBUG>3
+    if (p != NULL && zero) {
+      mi_assert_expensive(mi_mem_is_zero(p, size));
+    }
+    #endif
+    return p;
+  }
+}
+
+extern inline void* _mi_heap_malloc_zero_dasics(mi_heap_t* heap, size_t size, bool zero, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  return _mi_heap_malloc_zero_ex_dasics(heap, size, zero, 0, library_id, closure_id);
+}
+
+mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_dasics(mi_heap_t* heap, size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  return _mi_heap_malloc_zero_dasics(heap, size, false, library_id, closure_id);
+}
+
+
+mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_dasics(size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return NULL; 
+
+  heap->alloc_count++;
+  return mi_heap_malloc_dasics(heap, size, library_id, closure_id); // wrapper of multiple functions ???
+}
+
+mi_decl_export int mi_get_alloc_count_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  MI_UNUSED(closure_id);
+  // different from default malloc function, we should search heap for same library id
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return -1; 
+  return heap->alloc_count;
+}
+
+#endif
+
 // ------------------------------------------------------
 // ensure explicit external inline definitions are emitted!
 // ------------------------------------------------------

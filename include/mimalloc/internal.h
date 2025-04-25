@@ -252,6 +252,13 @@ void        _mi_padding_shrink(const mi_page_t* page, const mi_block_t* block, c
 bool        _mi_page_is_valid(mi_page_t* page);
 #endif
 
+// TODO: add internal functions FOR DASICS 
+#if MI_DASICS
+// Searching functions 
+mi_heap_t*  _mi_find_match_heap_dasics(uint32_t library_id);
+void*       _mi_malloc_generic_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id)  mi_attr_noexcept mi_attr_malloc;
+#endif 
+
 
 // ------------------------------------------------------
 // Branches
