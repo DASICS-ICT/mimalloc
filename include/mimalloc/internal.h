@@ -257,6 +257,10 @@ bool        _mi_page_is_valid(mi_page_t* page);
 // Searching functions 
 mi_heap_t*  _mi_find_match_heap_dasics(uint32_t library_id);
 void*       _mi_malloc_generic_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id)  mi_attr_noexcept mi_attr_malloc;
+
+void*       _mi_heap_malloc_zero_dasics(mi_heap_t* heap, size_t size, bool zero, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
+void*       _mi_heap_malloc_zero_ex_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;     // called from `_mi_heap_malloc_aligned`
+void*       _mi_heap_realloc_zero_dasics(mi_heap_t* heap, void* p, size_t newsize, bool zero, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
 #endif 
 
 

@@ -605,8 +605,7 @@ mi_decl_export void mi_free_dasics(void* p, uint32_t library_id, uint32_t closur
   }
 }
 
-mi_decl_export int mi_get_free_count_dasics(uint32_t library_id, uint closure_id) mi_attr_noexcept {
-  MI_UNUSED(closure_id);
+mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_noexcept {
   // different from default malloc function, we should search heap for same library id
   mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
   if (heap == NULL) return -1; 

@@ -743,6 +743,9 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_small_dasi
 
 // The main allocation function
 extern inline void* _mi_heap_malloc_zero_ex_dasics(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  // add malloc counter here
+  heap->alloc_count++;
+
   // fast path for small objects
   if mi_likely(size <= MI_SMALL_SIZE_MAX) {
     mi_assert_internal(huge_alignment == 0);
@@ -788,13 +791,94 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_dasics(mi_
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_dasics(size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
   mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
   if (heap == NULL) return NULL; 
-
-  heap->alloc_count++;
   return mi_heap_malloc_dasics(heap, size, library_id, closure_id); // wrapper of multiple functions ???
 }
 
-mi_decl_export int mi_get_alloc_count_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
-  MI_UNUSED(closure_id);
+// TODO: add zalloc & calloc
+// zero initialized small block
+mi_decl_nodiscard mi_decl_restrict void* mi_zalloc_small_dasics(size_t size, 
+                    uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return NULL; 
+
+  return mi_heap_malloc_small_zero_dasics(heap, size, true, library_id, closure_id);
+}
+
+mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_zalloc_dasics(mi_heap_t* heap, size_t size,
+                    uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  return _mi_heap_malloc_zero_dasics(heap, size, true, library_id, closure_id);
+}
+
+mi_decl_nodiscard mi_decl_restrict void* mi_zalloc_dasics(size_t size,
+                    uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return NULL; 
+  return mi_heap_zalloc_dasics(heap,size,library_id,closure_id);
+}
+
+
+mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_calloc_dasics(mi_heap_t* heap, size_t count, size_t size,
+                    uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  size_t total;
+  if (mi_count_size_overflow(count,size,&total)) return NULL;
+  return mi_heap_zalloc_dasics(heap,total,library_id,closure_id);
+}
+
+mi_decl_nodiscard mi_decl_restrict void* mi_calloc_dasics(size_t count, size_t size,
+                    uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return NULL; 
+  return mi_heap_calloc_dasics(heap,count,size,library_id,closure_id);
+}
+
+
+// TODO: try to add realloc support
+void* _mi_heap_realloc_zero_dasics(mi_heap_t* heap, void* p, size_t newsize, bool zero, 
+                                  uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  // if p == NULL then behave as malloc.
+  // else if size == 0 then reallocate to a zero-sized block (and don't return NULL, just as mi_malloc(0)).
+  // (this means that returning NULL always indicates an error, and `p` will not have been freed in that case.)
+  const size_t size = _mi_usable_size(p,"mi_realloc"); // also works if p == NULL (with size 0)
+  if mi_unlikely(newsize <= size && newsize >= (size / 2) && newsize > 0) {  // note: newsize must be > 0 or otherwise we return NULL for realloc(NULL,0)
+    mi_assert_internal(p!=NULL);
+    // todo: do not track as the usable size is still the same in the free; adjust potential padding?
+    // mi_track_resize(p,size,newsize)
+    // if (newsize < size) { mi_track_mem_noaccess((uint8_t*)p + newsize, size - newsize); }
+    return p;  // reallocation still fits and not more than 50% waste
+  }
+  void* newp = mi_heap_malloc_dasics(heap,newsize,library_id,closure_id);
+  if mi_likely(newp != NULL) {
+    if (zero && newsize > size) {
+      // also set last word in the previous allocation to zero to ensure any padding is zero-initialized
+      const size_t start = (size >= sizeof(intptr_t) ? size - sizeof(intptr_t) : 0);
+      _mi_memzero((uint8_t*)newp + start, newsize - start);
+    }
+    else if (newsize == 0) {
+      ((uint8_t*)newp)[0] = 0; // work around for applications that expect zero-reallocation to be zero initialized (issue #725)
+    }
+    if mi_likely(p != NULL) {
+      const size_t copysize = (newsize > size ? size : newsize);
+      mi_track_mem_defined(p,copysize);  // _mi_useable_size may be too large for byte precise memory tracking..
+      _mi_memcpy(newp, p, copysize);
+      mi_free_dasics(p,library_id,closure_id); // only free the original pointer if successful
+    }
+  }
+  return newp;
+}
+
+mi_decl_nodiscard void* mi_heap_realloc_dasics(mi_heap_t* heap, void* p, size_t newsize, 
+                                        uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  return _mi_heap_realloc_zero_dasics(heap, p, newsize, false, library_id, closure_id);
+}
+
+mi_decl_nodiscard void* mi_realloc_dasics(void* p, size_t newsize, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
+  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  if (heap == NULL) return NULL; 
+
+  return mi_heap_realloc_dasics(heap,p,newsize,library_id,closure_id);
+}
+
+mi_decl_export int mi_get_heap_alloc_count_dasics(uint32_t library_id) mi_attr_noexcept {
   // different from default malloc function, we should search heap for same library id
   mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
   if (heap == NULL) return -1; 
