@@ -143,7 +143,13 @@ static inline mi_decl_restrict void* mi_heap_malloc_small_zero(mi_heap_t* heap, 
 
   // get page in constant time, and allocate from it
   mi_page_t* page = _mi_heap_get_free_small_page(heap, size + MI_PADDING_SIZE);
+  #if MI_DASICS
+  void* const p = ((page->library_id != global_library_id) || (page->closure_id != global_closure_id)) ?
+                 _mi_malloc_generic(heap, size + MI_PADDING_SIZE, zero, 0/*huge alignment*/) :  
+                 _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
+  #else 
   void* const p = _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
+  #endif 
   mi_track_malloc(p,size,zero);
 
   #if MI_STAT>1
@@ -166,11 +172,21 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_small(mi_h
 }
 
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_small(size_t size) mi_attr_noexcept {
+  #if MI_DASICS 
+    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    if (heap == NULL) return NULL;
+    return mi_heap_malloc_small(heap, size);
+  #else
   return mi_heap_malloc_small(mi_prim_get_default_heap(), size);
+  #endif
 }
 
 // The main allocation function
 extern inline void* _mi_heap_malloc_zero_ex(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment) mi_attr_noexcept {
+  #if MI_DASICS
+  // add malloc counter here
+  heap->alloc_count++;
+  #endif
   // fast path for small objects
   if mi_likely(size <= MI_SMALL_SIZE_MAX) {
     mi_assert_internal(huge_alignment == 0);
@@ -212,12 +228,24 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc(mi_heap_t*
 }
 
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc(size_t size) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_malloc(heap, size);
+  #else 
   return mi_heap_malloc(mi_prim_get_default_heap(), size);
+  #endif 
 }
 
 // zero initialized small block
 mi_decl_nodiscard mi_decl_restrict void* mi_zalloc_small(size_t size) mi_attr_noexcept {
+  #if MI_DASICS 
+    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    if (heap == NULL) return NULL;
+    return mi_heap_malloc_small_zero(heap, size, true);
+  #else
   return mi_heap_malloc_small_zero(mi_prim_get_default_heap(), size, true);
+  #endif
 }
 
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_zalloc(mi_heap_t* heap, size_t size) mi_attr_noexcept {
@@ -225,7 +253,13 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_zalloc(mi_heap_t*
 }
 
 mi_decl_nodiscard mi_decl_restrict void* mi_zalloc(size_t size) mi_attr_noexcept {
+  #if MI_DASICS 
+    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    if (heap == NULL) return NULL;
+    return mi_heap_zalloc(heap, size);
+  #else
   return mi_heap_zalloc(mi_prim_get_default_heap(),size);
+  #endif
 }
 
 
@@ -236,7 +270,13 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_calloc(mi_heap_t*
 }
 
 mi_decl_nodiscard mi_decl_restrict void* mi_calloc(size_t count, size_t size) mi_attr_noexcept {
+  #if MI_DASICS 
+    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    if (heap == NULL) return NULL;
+    return mi_heap_calloc(heap, count, size);
+  #else
   return mi_heap_calloc(mi_prim_get_default_heap(),count,size);
+  #endif
 }
 
 // Uninitialized `calloc`
@@ -247,7 +287,13 @@ mi_decl_nodiscard extern mi_decl_restrict void* mi_heap_mallocn(mi_heap_t* heap,
 }
 
 mi_decl_nodiscard mi_decl_restrict void* mi_mallocn(size_t count, size_t size) mi_attr_noexcept {
+  #if MI_DASICS 
+    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    if (heap == NULL) return NULL; 
+    return mi_heap_mallocn(heap, count, size);
+  #else
   return mi_heap_mallocn(mi_prim_get_default_heap(),count,size);
+  #endif
 }
 
 // Expand (or shrink) in place (or fail)
@@ -326,24 +372,54 @@ mi_decl_nodiscard void* mi_heap_recalloc(mi_heap_t* heap, void* p, size_t count,
 
 
 mi_decl_nodiscard void* mi_realloc(void* p, size_t newsize) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_realloc(heap, p, newsize);
+  #else 
   return mi_heap_realloc(mi_prim_get_default_heap(),p,newsize);
+  #endif
 }
 
 mi_decl_nodiscard void* mi_reallocn(void* p, size_t count, size_t size) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_reallocn(heap, p, count, size);
+  #else 
   return mi_heap_reallocn(mi_prim_get_default_heap(),p,count,size);
+  #endif
 }
 
 // Reallocate but free `p` on errors
 mi_decl_nodiscard void* mi_reallocf(void* p, size_t newsize) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_reallocf(heap, p, newsize);
+  #else 
   return mi_heap_reallocf(mi_prim_get_default_heap(),p,newsize);
+  #endif
 }
 
 mi_decl_nodiscard void* mi_rezalloc(void* p, size_t newsize) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_rezalloc(heap, p, newsize);
+  #else 
   return mi_heap_rezalloc(mi_prim_get_default_heap(), p, newsize);
+  #endif
 }
 
 mi_decl_nodiscard void* mi_recalloc(void* p, size_t count, size_t size) mi_attr_noexcept {
+  #if MI_DASICS
+  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  if (heap == NULL) return NULL;
+  return mi_heap_recalloc(heap, p, count, size);
+  #else 
   return mi_heap_recalloc(mi_prim_get_default_heap(), p, count, size);
+  #endif
 }
 
 
@@ -692,6 +768,12 @@ mi_heap_t* _mi_find_match_heap_dasics(uint32_t library_id) {
     if (first_heap->library_id == library_id) break;
     first_heap = first_heap->next;
   }
+  // TODO: add additional step
+  // if we don't find related heap, we try to alloc a new one 
+  if (first_heap == NULL) {
+      mi_set_id_dasics(library_id, LIB_ID_LOC);
+      first_heap = mi_heap_new();
+  }
   return first_heap;
 }
 
@@ -714,12 +796,9 @@ static inline mi_decl_restrict void* mi_heap_malloc_small_zero_dasics(mi_heap_t*
 
   // get page in constant time, and allocate from it
   mi_page_t* page = _mi_heap_get_free_small_page(heap, size + MI_PADDING_SIZE);
-  // TODO: check page ids ???
-  if (page->library_id != library_id || page->closure_id != closure_id) {
-      return NULL;
-  }
-
-  void* const p = _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
+  void* const p = ((page->library_id != global_library_id) || (page->closure_id != global_closure_id)) ?
+                 _mi_malloc_generic(heap, size + MI_PADDING_SIZE, zero, 0/*huge alignment*/) :  
+                 _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
   mi_track_malloc(p,size,zero);
 
   #if MI_STAT>1

@@ -253,8 +253,17 @@ mi_decl_nodiscard mi_heap_t* mi_heap_new_in_arena(mi_arena_id_t arena_id) {
 }
 
 mi_decl_nodiscard mi_heap_t* mi_heap_new(void) {
+  #if MI_DASICS
+  mi_heap_t* new_heap = mi_heap_new_ex(0 /* default heap tag */, true /* no reclaim */, _mi_arena_id_none());
+
+  if (new_heap != NULL) {
+    new_heap->library_id = global_library_id;
+  }
+  return new_heap; 
+  #else 
   // don't reclaim abandoned memory or otherwise destroy is unsafe
   return mi_heap_new_ex(0 /* default heap tag */, true /* no reclaim */, _mi_arena_id_none());
+  #endif 
 }
 
 bool _mi_heap_memid_is_suitable(mi_heap_t* heap, mi_memid_t memid) {
@@ -283,6 +292,10 @@ static void mi_heap_free(mi_heap_t* heap) {
   if (heap==NULL || !mi_heap_is_initialized(heap)) return;
   if (mi_heap_is_backing(heap)) return; // dont free the backing heap
 
+  #if MI_DASICS
+    mi_assert (heap->library_id == global_library_id);
+    if (heap->library_id != global_library_id) return;
+  #endif  
   // reset default
   if (mi_heap_is_default(heap)) {
     _mi_heap_set_default_direct(heap->tld->heap_backing);
@@ -388,6 +401,10 @@ void mi_heap_destroy(mi_heap_t* heap) {
   mi_assert(heap->no_reclaim);
   mi_assert_expensive(mi_heap_is_valid(heap));
   if (heap==NULL || !mi_heap_is_initialized(heap)) return;
+  #if MI_DASICS
+    mi_assert (heap->library_id == global_library_id);
+    if (heap->library_id != global_library_id) return;
+  #endif 
   #if MI_GUARDED
   // _mi_warning_message("'mi_heap_destroy' called but MI_GUARDED is enabled -- using `mi_heap_delete` instead (heap at %p)\n", heap);
   mi_heap_delete(heap);
@@ -479,6 +496,10 @@ void mi_heap_delete(mi_heap_t* heap)
   mi_assert_expensive(mi_heap_is_valid(heap));
   if (heap==NULL || !mi_heap_is_initialized(heap)) return;
 
+  #if MI_DASICS
+    mi_assert (heap->library_id == global_library_id);
+    if (heap->library_id != global_library_id) return;
+  #endif 
   mi_heap_t* bheap = heap->tld->heap_backing;
   if (bheap != heap && mi_heaps_are_compatible(bheap,heap)) {
     // transfer still used pages to the backing heap

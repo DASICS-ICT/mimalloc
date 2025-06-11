@@ -156,6 +156,16 @@ void mi_free(void* p) mi_attr_noexcept
   const bool is_local = (_mi_prim_thread_id() == mi_atomic_load_relaxed(&segment->thread_id));
   mi_page_t* const page = _mi_segment_page_of(segment, p);
 
+  #if MI_DASICS
+    // add id check and free counters 
+    mi_assert((page->library_id == global_library_id) && (page->closure_id == global_closure_id));
+    if ((page->library_id != global_library_id) || (page->closure_id != global_closure_id)) return;
+    mi_heap_t* const heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_assert((heap != NULL));
+    if (heap == NULL) return;
+    heap->free_count++;  
+  #endif 
+
   if mi_likely(is_local) {                        // thread-local free?
     if mi_likely(page->flags.full_aligned == 0) { // and it is not a full page (full pages need to move from the full bin), nor has aligned blocks (aligned blocks need to be unaligned)
       // thread-local, aligned, and not a full page

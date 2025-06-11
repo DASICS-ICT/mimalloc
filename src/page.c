@@ -294,6 +294,12 @@ static mi_page_t* mi_page_fresh_alloc(mi_heap_t* heap, mi_page_queue_t* pq, size
   mi_heap_stat_increase(heap, page_bins[mi_page_bin(page)], 1);
   if (pq != NULL) { mi_page_queue_push(heap, pq, page); }
   mi_assert_expensive(_mi_page_is_valid(page));
+
+  #if MI_DASICS
+    page->library_id = global_library_id;
+    page->closure_id = global_closure_id;
+  #endif 
+
   return page;
 }
 
@@ -770,6 +776,14 @@ static mi_page_t* mi_page_queue_find_free_ex(mi_heap_t* heap, mi_page_queue_t* p
     // collect freed blocks by us and other threads
     _mi_page_free_collect(page, false);
 
+    #if MI_DASICS
+    // check FOR DASICS
+    if (page->library_id != global_library_id || page->closure_id != global_closure_id) {
+      page = page->next;
+      continue;
+    }
+    #endif 
+
   #if MI_MAX_CANDIDATE_SEARCH > 1
     // search up to N pages for a best candidate
 
@@ -855,6 +869,12 @@ static inline mi_page_t* mi_find_free_page(mi_heap_t* heap, size_t size) {
   // check the first page: we even do this with candidate search or otherwise we re-search every time
   mi_page_t* page = pq->first;
   if (page != NULL) {
+   #if MI_DASICS
+    //FIXBUG: add id check here, else different closure share same page 
+    if (page->library_id != global_library_id || page->closure_id != global_closure_id) {
+      return mi_page_queue_find_free_ex(heap, pq, true);
+    }
+   #endif 
    #if (MI_SECURE>=3) // in secure mode, we extend half the time to increase randomness
     if (page->capacity < page->reserved && ((_mi_heap_random_next(heap) & 1) == 1)) {
       mi_page_extend_free(heap, page, heap->tld);

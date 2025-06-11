@@ -233,6 +233,17 @@ void _mi_heap_guarded_init(mi_heap_t* heap) {
 }
 #endif
 
+#if MI_DASICS
+// add global registers FOR DASICS 
+uint32_t global_library_id = 0;
+uint32_t global_closure_id = 0;
+
+mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept
+{
+  if (location == LIB_ID_LOC) global_library_id = id;
+  else if (location == CLS_ID_LOC) global_closure_id = id;
+}
+#endif 
 
 static void mi_heap_main_init(void) {
   if (_mi_heap_main.cookie == 0) {
