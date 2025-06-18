@@ -169,27 +169,36 @@ int main (int argc, char** argv) {
     // test_malloc_free_simple();
     // test_malloc_free(2, 2, 1024);
 
+    mi_count_id_dasics(&main);
     printf("test library heap isolation\n");
 
-    mi_set_id_dasics(1, LIB_ID_LOC);
-    mi_set_id_dasics(1, CLS_ID_LOC);
+    //mi_set_id_dasics(1, LIB_ID_LOC);
+    //mi_set_id_dasics(1, CLS_ID_LOC);
+    mi_count_id_dasics(&test_lib_add);
     int res1 = test_lib_add(8);
 
-    mi_set_id_dasics(2, LIB_ID_LOC);
-    mi_set_id_dasics(2, CLS_ID_LOC);
+    //mi_set_id_dasics(2, LIB_ID_LOC);
+    //mi_set_id_dasics(2, CLS_ID_LOC);
+    mi_count_id_dasics(&test_lib_mul);
     int res2 = test_lib_mul(8);
 
-    mi_set_id_dasics(0, LIB_ID_LOC);
-    mi_set_id_dasics(0, CLS_ID_LOC);
+    //mi_set_id_dasics(0, LIB_ID_LOC);
+    //mi_set_id_dasics(0, CLS_ID_LOC);
+    mi_count_id_dasics(&main);
     // add counter test 
     int alloc_cnt = 0, free_cnt = 0;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         alloc_cnt = mi_get_heap_alloc_count_dasics(i);
         free_cnt = mi_get_heap_free_count_dasics(i);
         printf("library %d : malloc times %d, free times %d\n", i, alloc_cnt, free_cnt);       
     }
 
     printf("finish testing library heap isolation\n");
+    printf("main address: 0x%x\n", &main);
+    printf("add address: 0x%x\n", &test_lib_add);
+    printf("mul address: 0x%x\n", &test_lib_mul);
 
+    //mi_set_id_dasics(0, LIB_ID_LOC);
+    //mi_set_id_dasics(0, CLS_ID_LOC);
     return 0;
 }

@@ -363,6 +363,7 @@ extern uint32_t global_library_id, global_closure_id;
 #define LIB_ID_LOC 0
 #define CLS_ID_LOC 1
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept;
+mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept;
 
 // TODO: add pointer boundery check functions 
 #endif

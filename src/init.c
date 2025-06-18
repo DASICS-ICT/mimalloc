@@ -243,6 +243,27 @@ mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noe
   if (location == LIB_ID_LOC) global_library_id = id;
   else if (location == CLS_ID_LOC) global_closure_id = id;
 }
+
+mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept
+{
+  // simple hash function for counting library id and closure id 
+  // NOTE: only lower 48 bit is used in 64-bit address
+  uint64_t addr = (uint32_t) p; 
+  uint32_t upper = (uint32_t) ((addr >> 24) & 0xffffff);
+  uint32_t lower = (uint32_t) (addr & 0xffffff);
+
+  uint32_t library_id = 0, closure_id = 0;
+  for (size_t i = 0; i < 6; i++) {
+    library_id |= (upper & 0xf);
+    upper >>= 4;
+    closure_id |= (lower & 0xf);
+    lower >>= 4;
+  }
+  global_library_id = (library_id) & 0x3;
+  global_closure_id = (closure_id) & 0x3;
+
+}
+
 #endif 
 
 static void mi_heap_main_init(void) {
