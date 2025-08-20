@@ -146,7 +146,25 @@ int test_lib_add(int steps) {
     int res = array[steps-1];
     printf("final result: %d\n", res);
 
+    // TODO： add bound test 
+    bool is_used;
+    is_used = mi_ptr_check_bound_dasics(array);
+
+    printf("check array ptr is used:%s\n", is_used ? "true" : "false");
+    is_used = mi_ptr_check_bound_dasics(array+ (steps>>1));
+    printf("check array mid is used:%s\n", is_used ? "true" : "false");
+    is_used = mi_ptr_check_bound_dasics(array+ (steps<<1));
+    printf("check array end is used:%s\n", is_used ? "true" : "false");   
+
     free(array);
+
+    is_used = mi_ptr_check_bound_dasics(array);
+    printf("check array ptr is used:%s\n", is_used ? "true" : "false");
+    is_used = mi_ptr_check_bound_dasics(array+ (steps>>1));
+    printf("check array mid is used:%s\n", is_used ? "true" : "false");
+    is_used = mi_ptr_check_bound_dasics(array+ (steps<<1));
+    printf("check array end is used:%s\n", is_used ? "true" : "false");       
+
     return res;
 }
 
@@ -194,11 +212,6 @@ int main (int argc, char** argv) {
     }
 
     printf("finish testing library heap isolation\n");
-    printf("main address: 0x%x\n", &main);
-    printf("add address: 0x%x\n", &test_lib_add);
-    printf("mul address: 0x%x\n", &test_lib_mul);
 
-    //mi_set_id_dasics(0, LIB_ID_LOC);
-    //mi_set_id_dasics(0, CLS_ID_LOC);
     return 0;
 }

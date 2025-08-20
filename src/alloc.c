@@ -184,7 +184,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_small(size_t si
 // The main allocation function
 extern inline void* _mi_heap_malloc_zero_ex(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment) mi_attr_noexcept {
   #if MI_DASICS
-  // add malloc counter here
+  // add malloc counter here?
   heap->alloc_count++;
   #endif
   // fast path for small objects

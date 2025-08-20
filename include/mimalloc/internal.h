@@ -1111,5 +1111,4 @@ static inline void _mi_memzero_aligned(void* dst, size_t n) {
 }
 #endif
 
-
 #endif
