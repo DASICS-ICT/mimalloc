@@ -332,26 +332,6 @@ mi_decl_export void mi_collect_reduce(size_t target_thread_owned) mi_attr_noexce
 // TODO: APIs FOR DASICS  
 // ------------------------------------------------------
 #if MI_DASICS
-// Standard malloc interface, currently only includes malloc and free
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_malloc_dasics(size_t size, uint32_t library_id, uint32_t closure_id)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_calloc_dasics(size_t count, size_t size, uint32_t library_id, uint32_t closure_id)  mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size2(1,2);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_zalloc_dasics(size_t size, uint32_t library_id, uint32_t closure_id)       mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-mi_decl_nodiscard mi_decl_export void* mi_realloc_dasics(void* p, size_t newsize, uint32_t library_id, uint32_t closure_id)      mi_attr_noexcept mi_attr_alloc_size(2);
-
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_malloc_small_dasics(size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_zalloc_small_dasics(size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(1);
-
-mi_decl_export void mi_free_dasics(void* p, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
-
-// Heap 
-mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_dasics(uint32_t library_id);
-mi_decl_export void mi_heap_delete_dasics(mi_heap_t* heap, uint32_t library_id);
-mi_decl_export void mi_heap_destroy_dasics(mi_heap_t* heap, uint32_t library_id);
-
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_heap_malloc_dasics(mi_heap_t* heap, size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_heap_zalloc_dasics(mi_heap_t* heap, size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2);
-mi_decl_nodiscard mi_decl_export mi_decl_restrict void* mi_heap_calloc_dasics(mi_heap_t* heap, size_t count, size_t size, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size2(2, 3);
-mi_decl_nodiscard mi_decl_export void* mi_heap_realloc_dasics(mi_heap_t* heap, void* p, size_t newsize, uint32_t library_id, uint32_t closure_id)              mi_attr_noexcept mi_attr_alloc_size(3);
 
 // Fucntions for getting counters 
 mi_decl_export int mi_get_heap_alloc_count_dasics(uint32_t library_id) mi_attr_noexcept;
@@ -360,13 +340,13 @@ mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_no
 // TODO： add external function for push libraray id into stack 
 extern uint32_t global_library_id, global_closure_id;
 
+// TODO: add pointer boundery check functions 
 #define LIB_ID_LOC 0
 #define CLS_ID_LOC 1
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept;
 mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept;
 mi_decl_export bool mi_ptr_check_bound_dasics (void *p)  mi_attr_noexcept;
 
-// TODO: add pointer boundery check functions 
 #endif
 
 

@@ -582,38 +582,6 @@ static void mi_block_unguard(mi_page_t* page, mi_block_t* block, void* p) {
 
 // TODO: add free functions FOR DASICS
 #if MI_DASICS
-// Free a block
-// Fast path written carefully to prevent register spilling on the stack
-// wrapper of multiple functions ???
-mi_decl_export void mi_free_dasics(void* p, uint32_t library_id, uint32_t closure_id) mi_attr_noexcept {
-  mi_segment_t* const segment = mi_checked_ptr_segment(p,"mi_free_dasiscs");
-  if mi_unlikely(segment==NULL) return;
-
-  const bool is_local = (_mi_prim_thread_id() == mi_atomic_load_relaxed(&segment->thread_id));
-  mi_page_t* const page = _mi_segment_page_of(segment, p);
-
-  // add id check and free counters 
-  mi_assert_dasics((page->library_id == library_id) && (page->closure_id == closure_id));
-  mi_heap_t* const heap = _mi_find_match_heap_dasics(library_id);
-  mi_assert_dasics((heap != NULL));
-  heap->free_count++;
-
-  if mi_likely(is_local) {                        // thread-local free?
-    if mi_likely(page->flags.full_aligned == 0) { // and it is not a full page (full pages need to move from the full bin), nor has aligned blocks (aligned blocks need to be unaligned)
-      // thread-local, aligned, and not a full page
-      mi_block_t* const block = (mi_block_t*)p;
-      mi_free_block_local(page, block, true /* track stats */, false /* no need to check if the page is full */);
-    }
-    else {
-      // page is full or contains (inner) aligned blocks; use generic path
-      mi_free_generic_local(page, segment, p);
-    }
-  }
-  else {
-    // not thread-local; use generic path
-    mi_free_generic_mt(page, segment, p);
-  }
-}
 
 mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_noexcept {
   // different from default malloc function, we should search heap for same library id

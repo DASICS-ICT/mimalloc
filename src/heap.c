@@ -754,27 +754,3 @@ bool mi_heap_visit_blocks(const mi_heap_t* heap, bool visit_blocks, mi_block_vis
   mi_visit_blocks_args_t args = { visit_blocks, visitor, arg };
   return mi_heap_visit_areas(heap, &mi_heap_area_visitor, &args);
 }
-
-// TODO: add functions FOR DASICS
-#if MI_DASICS
-mi_decl_nodiscard mi_heap_t* mi_heap_new_dasics(uint32_t library_id) {
-  // don't reclaim abandoned memory or otherwise destroy is unsafe
-  mi_heap_t* new_heap = mi_heap_new_ex(0 /* default heap tag */, true /* no reclaim */, _mi_arena_id_none());
-  if (new_heap != NULL) {
-    new_heap->library_id = library_id;
-  }
-  return new_heap;
-}
-
-mi_decl_export void mi_heap_delete_dasics(mi_heap_t* heap, uint32_t library_id) {
-  // add checking for library id 
-  mi_assert_dasics(heap->library_id == library_id); 
-  mi_heap_delete(heap);
-}
-
-mi_decl_export void mi_heap_destroy_dasics(mi_heap_t* heap, uint32_t library_id) {
-  // add checking for library id 
-  mi_assert_dasics(heap->library_id == library_id); 
-  mi_heap_destroy(heap);
-}
-#endif 
