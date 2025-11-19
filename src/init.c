@@ -112,6 +112,24 @@ const mi_page_t _mi_page_empty = {
 // may lead to allocation itself on some platforms)
 // --------------------------------------------------------
 
+#if MI_DASICS
+
+mi_decl_cache_align const mi_bitvec_t mi_bitvec_empty = {
+{ 0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0 }  
+};
+
+mi_decl_cache_align mi_bitvec_t mi_bitvec_main = {
+{ 0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0 }  
+};
+#endif 
+
+
 mi_decl_hidden mi_decl_cache_align const mi_heap_t _mi_heap_empty = {
   NULL,
   MI_ATOMIC_VAR_INIT(NULL),
@@ -145,7 +163,11 @@ mi_decl_cache_align static const mi_tld_t tld_empty = {
   0,
   false,
   NULL, NULL,
-  { MI_SEGMENT_SPAN_QUEUES_EMPTY, 0, 0, 0, 0, 0, &mi_subproc_default, tld_empty_stats }, // segments
+  { MI_SEGMENT_SPAN_QUEUES_EMPTY, 0, 0, 0, 0, 0, 
+    #if MI_DASICS
+    &mi_bitvec_empty, NULL, NULL,
+    #endif
+    &mi_subproc_default, tld_empty_stats }, // segments
   { MI_STAT_VERSION, MI_STATS_NULL }       // stats
 };
 
@@ -161,7 +183,11 @@ extern mi_decl_hidden mi_heap_t _mi_heap_main;
 static mi_decl_cache_align mi_tld_t tld_main = {
   0, false,
   &_mi_heap_main, & _mi_heap_main,
-  { MI_SEGMENT_SPAN_QUEUES_EMPTY, 0, 0, 0, 0, 0, &mi_subproc_default, &tld_main.stats }, // segments
+  { MI_SEGMENT_SPAN_QUEUES_EMPTY, 0, 0, 0, 0, 0,
+    #if MI_DASICS
+    &mi_bitvec_main, NULL, NULL,
+    #endif 
+    &mi_subproc_default, &tld_main.stats }, // segments
   { MI_STAT_VERSION, MI_STATS_NULL }       // stats
 };
 
@@ -429,7 +455,7 @@ void _mi_thread_data_collect(void) {
 }
 
 // Initialize the thread local default heap, called from `mi_thread_init`
-static bool _mi_thread_heap_init(void) {
+static bool _mi_thread_heap_init(void) { /// need to modify? currently all thread use 1 tld
   if (mi_heap_is_initialized(mi_prim_get_default_heap())) return true;
   if (_mi_is_main_thread()) {
     // mi_assert_internal(_mi_heap_main.thread_id != 0);  // can happen on freeBSD where alloc is called before any initialization

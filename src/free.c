@@ -160,7 +160,7 @@ void mi_free(void* p) mi_attr_noexcept
     // add id check and free counters 
     mi_assert((page->library_id == global_library_id) && (page->closure_id == global_closure_id));
     if ((page->library_id != global_library_id) || (page->closure_id != global_closure_id)) return;
-    mi_heap_t* const heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* const heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     mi_assert((heap != NULL));
     if (heap == NULL) return;
     heap->free_count++;  
@@ -585,7 +585,7 @@ static void mi_block_unguard(mi_page_t* page, mi_block_t* block, void* p) {
 
 mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_noexcept {
   // different from default malloc function, we should search heap for same library id
-  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(library_id);
   if (heap == NULL) return -1; 
   return heap->free_count;
 }

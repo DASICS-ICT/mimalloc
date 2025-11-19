@@ -486,6 +486,13 @@ typedef struct mi_segment_s {
   mi_commit_mask_t  purge_mask;         // slices that can be purged
   mi_commit_mask_t  commit_mask;        // slices that are currently committed
 
+  #if MI_DASICS
+  mi_library_id_t       library_id;        // library id FOR DASICS
+  mi_closure_id_t       closure_id;        // function closure id FOR DASICS
+  struct mi_segment_s*  prev_segment;       // to prev segment
+  struct mi_segment_s*  next_segment;       // to next segment
+  #endif 
+
   // from here is zero initialized
   struct mi_segment_s* next;            // the list of freed segments in the cache (must be first field, see `segment.c:mi_segment_init`)
   bool              was_reclaimed;      // true if it was reclaimed (used to limit on-free reclamation)
@@ -616,6 +623,16 @@ struct mi_subproc_s {
 // Thread Local data
 // ------------------------------------------------------
 
+#if MI_DASICS
+#define MAX_LIBRARYS 32
+#define MAX_CLOSURES 32
+typedef struct mi_bitvec_s {
+  uint32_t bit_array[MAX_LIBRARYS];
+} mi_bitvec_t;
+
+
+#endif 
+
 // A "span" is is an available range of slices. The span queues keep
 // track of slice spans of at most the given `slice_count` (but more than the previous size class).
 typedef struct mi_span_queue_s {
@@ -634,6 +651,12 @@ typedef struct mi_segments_tld_s {
   size_t              current_size; // current size of all segments
   size_t              peak_size;    // peak size of all segments
   size_t              reclaim_count;// number of reclaimed (abandoned) segments
+  // TODO: add closure track bit vector for segments 
+  #if MI_DASICS
+  mi_bitvec_t*        seg_bit_vectors;// track bit vector for segments 
+  mi_segment_t*       first_segment;
+  mi_segment_t*       last_segment;
+  #endif
   mi_subproc_t*       subproc;      // sub-process this thread belongs to.
   mi_stats_t*         stats;        // points to tld stats
 } mi_segments_tld_t;

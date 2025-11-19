@@ -337,6 +337,10 @@ mi_decl_export void mi_collect_reduce(size_t target_thread_owned) mi_attr_noexce
 mi_decl_export int mi_get_heap_alloc_count_dasics(uint32_t library_id) mi_attr_noexcept;
 mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_noexcept;
 
+// find relative page and page size based on given library id and closure id
+mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_id, void** p, size_t* area_size) mi_attr_noexcept; 
+
+
 // TODO： add external function for push libraray id into stack 
 extern uint32_t global_library_id, global_closure_id;
 

@@ -173,7 +173,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc_small(mi_h
 
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_small(size_t size) mi_attr_noexcept {
   #if MI_DASICS 
-    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     if (heap == NULL) return NULL;
     return mi_heap_malloc_small(heap, size);
   #else
@@ -229,7 +229,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_malloc(mi_heap_t*
 
 mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc(size_t size) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_malloc(heap, size);
   #else 
@@ -240,7 +240,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc(size_t size) mi
 // zero initialized small block
 mi_decl_nodiscard mi_decl_restrict void* mi_zalloc_small(size_t size) mi_attr_noexcept {
   #if MI_DASICS 
-    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     if (heap == NULL) return NULL;
     return mi_heap_malloc_small_zero(heap, size, true);
   #else
@@ -254,7 +254,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_zalloc(mi_heap_t*
 
 mi_decl_nodiscard mi_decl_restrict void* mi_zalloc(size_t size) mi_attr_noexcept {
   #if MI_DASICS 
-    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     if (heap == NULL) return NULL;
     return mi_heap_zalloc(heap, size);
   #else
@@ -271,7 +271,7 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_heap_calloc(mi_heap_t*
 
 mi_decl_nodiscard mi_decl_restrict void* mi_calloc(size_t count, size_t size) mi_attr_noexcept {
   #if MI_DASICS 
-    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     if (heap == NULL) return NULL;
     return mi_heap_calloc(heap, count, size);
   #else
@@ -288,7 +288,7 @@ mi_decl_nodiscard extern mi_decl_restrict void* mi_heap_mallocn(mi_heap_t* heap,
 
 mi_decl_nodiscard mi_decl_restrict void* mi_mallocn(size_t count, size_t size) mi_attr_noexcept {
   #if MI_DASICS 
-    mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+    mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     if (heap == NULL) return NULL; 
     return mi_heap_mallocn(heap, count, size);
   #else
@@ -373,7 +373,7 @@ mi_decl_nodiscard void* mi_heap_recalloc(mi_heap_t* heap, void* p, size_t count,
 
 mi_decl_nodiscard void* mi_realloc(void* p, size_t newsize) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_realloc(heap, p, newsize);
   #else 
@@ -383,7 +383,7 @@ mi_decl_nodiscard void* mi_realloc(void* p, size_t newsize) mi_attr_noexcept {
 
 mi_decl_nodiscard void* mi_reallocn(void* p, size_t count, size_t size) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_reallocn(heap, p, count, size);
   #else 
@@ -394,7 +394,7 @@ mi_decl_nodiscard void* mi_reallocn(void* p, size_t count, size_t size) mi_attr_
 // Reallocate but free `p` on errors
 mi_decl_nodiscard void* mi_reallocf(void* p, size_t newsize) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_reallocf(heap, p, newsize);
   #else 
@@ -404,7 +404,7 @@ mi_decl_nodiscard void* mi_reallocf(void* p, size_t newsize) mi_attr_noexcept {
 
 mi_decl_nodiscard void* mi_rezalloc(void* p, size_t newsize) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_rezalloc(heap, p, newsize);
   #else 
@@ -414,7 +414,7 @@ mi_decl_nodiscard void* mi_rezalloc(void* p, size_t newsize) mi_attr_noexcept {
 
 mi_decl_nodiscard void* mi_recalloc(void* p, size_t count, size_t size) mi_attr_noexcept {
   #if MI_DASICS
-  mi_heap_t* heap = _mi_find_match_heap_dasics(global_library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
   if (heap == NULL) return NULL;
   return mi_heap_recalloc(heap, p, count, size);
   #else 
@@ -757,7 +757,8 @@ mi_decl_restrict void* _mi_heap_malloc_guarded(mi_heap_t* heap, size_t size, boo
 
 // TODO: add malloc functions FOR DASICS
 #if MI_DASICS
-mi_heap_t* _mi_find_match_heap_dasics(uint32_t library_id) {
+mi_heap_t* _mi_find_match_heap_and_retry_dasics(uint32_t library_id) {
+
   // different from default malloc function, we should search heap for same library id
   mi_heap_t *heap = mi_prim_get_default_heap();
   // NOTE: If we add additional heaps, default heap is the last heap of tld heaps list, 
@@ -777,9 +778,26 @@ mi_heap_t* _mi_find_match_heap_dasics(uint32_t library_id) {
   return first_heap;
 }
 
+mi_heap_t* _mi_find_match_heap_dasics(uint32_t library_id) {
+  // only contains find function ,u sed for new heap alloc 
+  // If we use retry version will cause dead lock
+  // FIXBUG: we may find some uninitialized heap 
+  mi_heap_t *heap = mi_prim_get_default_heap();
+
+  mi_heap_t *first_heap = heap->tld->heaps;  // switch to heap list head
+
+  while (first_heap != NULL) {
+    if (!mi_heap_is_initialized(first_heap)) continue;
+    if (first_heap->library_id == library_id) break;
+    first_heap = first_heap->next;
+  }
+
+  return first_heap;
+}
+
 mi_decl_export int mi_get_heap_alloc_count_dasics(uint32_t library_id) mi_attr_noexcept {
   // different from default malloc function, we should search heap for same library id
-  mi_heap_t* heap = _mi_find_match_heap_dasics(library_id);
+  mi_heap_t* heap = _mi_find_match_heap_and_retry_dasics(library_id);
   if (heap == NULL) return -1; 
   return heap->alloc_count;
 }

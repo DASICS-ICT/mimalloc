@@ -402,11 +402,28 @@ static void mi_segments_track_size(long segment_size, mi_segments_tld_t* tld) {
   if (tld->count > tld->peak_count) tld->peak_count = tld->count;
   tld->current_size += segment_size;
   if (tld->current_size > tld->peak_size) tld->peak_size = tld->current_size;
+
+  // TODO: modify closure track bit vector 
+  #if MI_DASICS
+  uint32_t bitvec = tld->seg_bit_vectors->bit_array[global_library_id];
+  if (segment_size >= 0) bitvec |=  (1 << global_closure_id);  // set relative closure bit
+                    else bitvec &= ~(1 << global_closure_id);  // clear relative closure bit
+  tld->seg_bit_vectors->bit_array[global_library_id] = bitvec;
+
+  #endif 
 }
 
 static void mi_segment_os_free(mi_segment_t* segment, mi_segments_tld_t* tld) {
   segment->thread_id = 0;
   _mi_segment_map_freed_at(segment);
+
+  #if MI_DASICS
+  mi_set_id_dasics(segment->library_id, LIB_ID_LOC);
+  mi_set_id_dasics(segment->closure_id, CLS_ID_LOC);
+
+  _mi_remove_segment_queue(tld, segment);
+  #endif 
+
   mi_segments_track_size(-((long)mi_segment_size(segment)),tld);
   if (segment->was_reclaimed) {
     tld->reclaim_count--;
@@ -800,6 +817,12 @@ static mi_page_t* mi_segments_page_find_and_allocate(size_t slice_count, mi_aren
       if (slice->slice_count >= slice_count) {
         // found one
         mi_segment_t* segment = _mi_ptr_segment(slice);
+
+        // TODO: check segment closure_id
+        #if MI_DASICS
+        if (segment->closure_id != global_closure_id) continue; //???
+        #endif 
+
         if (_mi_arena_memid_is_suitable(segment->memid, req_arena_id)) {
           // found a suitable page span
           mi_span_queue_delete(sq, slice);
@@ -883,6 +906,13 @@ static mi_segment_t* mi_segment_os_alloc( size_t required, size_t page_alignment
   segment->commit_mask = commit_mask;
   segment->purge_expire = 0;
   mi_commit_mask_create_empty(&segment->purge_mask);
+
+  #if MI_DASICS
+  segment->library_id = global_library_id;
+  segment->closure_id = global_closure_id;
+
+  _mi_insert_segment_queue(tld, segment);
+  #endif 
 
   mi_segments_track_size((long)(segment_size), tld);
   _mi_segment_map_allocated_at(segment);
@@ -1121,6 +1151,13 @@ static void mi_segment_abandon(mi_segment_t* segment, mi_segments_tld_t* tld) {
 
   // all pages in the segment are abandoned; add it to the abandoned list
   _mi_stat_increase(&tld->stats->segments_abandoned, 1);
+
+  #if MI_DASICS
+  mi_set_id_dasics(segment->library_id, LIB_ID_LOC);
+  mi_set_id_dasics(segment->closure_id, CLS_ID_LOC);
+  _mi_remove_segment_queue(tld, segment);
+  #endif 
+
   mi_segments_track_size(-((long)mi_segment_size(segment)), tld);
   segment->thread_id = 0;
   segment->abandoned_visits = 1;   // from 0 to 1 to signify it is abandoned
@@ -1214,6 +1251,13 @@ static mi_segment_t* mi_segment_reclaim(mi_segment_t* segment, mi_heap_t* heap, 
   segment->abandoned_visits = 0;
   segment->was_reclaimed = true;
   tld->reclaim_count++;
+
+  #if MI_DASICS
+  segment->library_id = global_library_id;
+  segment->closure_id = global_closure_id;
+  _mi_insert_segment_queue(tld, segment);
+  #endif
+
   mi_segments_track_size((long)mi_segment_size(segment), tld);
   mi_assert_internal(segment->next == NULL);
   _mi_stat_decrease(&tld->stats->segments_abandoned, 1);
@@ -1537,6 +1581,26 @@ static mi_page_t* mi_segments_page_alloc(mi_heap_t* heap, mi_page_kind_t page_ki
   size_t page_size = _mi_align_up(required, (required > MI_MEDIUM_PAGE_SIZE ? MI_MEDIUM_PAGE_SIZE : MI_SEGMENT_SLICE_SIZE));
   size_t slices_needed = page_size / MI_SEGMENT_SLICE_SIZE;
   mi_assert_internal(slices_needed * MI_SEGMENT_SLICE_SIZE == page_size);
+
+  // TODO: check segment bit vector first 
+  // if we could not find segment with matching closure_id, we should force reclaim or alloc a new segment
+  #if MI_DASICS
+  
+  uint32_t bitvec = tld->seg_bit_vectors->bit_array[global_library_id];
+  bool has_match_segment = ( bitvec & (1 << global_closure_id)) != 0;
+  if (!has_match_segment) {
+    // no free page, allocate a new segment and try again
+    if (mi_segment_reclaim_or_alloc(heap, slices_needed, block_size, tld) == NULL) {
+      // OOM or reclaimed a good page in the heap
+      return NULL;
+    }
+    else {
+      // otherwise try again
+      return mi_segments_page_alloc(heap, page_kind, required, block_size, tld);
+    }    
+  }
+  #endif
+
   mi_page_t* page = mi_segments_page_find_and_allocate(slices_needed, heap->arena_id, tld); //(required <= MI_SMALL_SIZE_MAX ? 0 : slices_needed), tld);
   if (page==NULL) {
     // no free page, allocate a new segment and try again
@@ -1699,3 +1763,76 @@ bool _mi_segment_visit_blocks(mi_segment_t* segment, int heap_tag, bool visit_bl
   }
   return true;
 }
+
+
+#if MI_DASICS
+
+mi_segment_t * _mi_find_id_segment_dasics(mi_segments_tld_t * tld, uint32_t closure_id) {
+  if (tld->count == 0) return NULL;
+  mi_segment_t * first = tld->first_segment;
+  mi_segment_t * last = tld->last_segment;
+  mi_segment_t * result = NULL;
+
+  mi_assert (first != NULL && last != NULL); 
+  // odd : first = last 
+  // even: first->next = last && last->prev = first
+
+  size_t loop = (tld->count+1) >> 1;
+  for (size_t i = 0; i < loop; i++) {
+   if (first->closure_id == closure_id) {
+      result = first; break;
+   } else if (last->closure_id == closure_id) {
+      result = last; break;
+   }
+    first = first->next_segment;
+    last = last->prev_segment;
+  }
+  return result;
+}
+
+void _mi_insert_segment_queue(mi_segments_tld_t * tld, mi_segment_t* segment) {
+  segment->prev_segment = tld->first_segment;
+  segment->next_segment = tld->last_segment;
+  if (tld->first_segment != NULL) tld->first_segment->next_segment = segment;
+  if (tld->last_segment != NULL) tld->last_segment->prev_segment = segment;
+  tld->first_segment = segment;
+  tld->last_segment = segment;
+}
+
+void _mi_remove_segment_queue(mi_segments_tld_t * tld, mi_segment_t* segment) {
+
+  segment->prev_segment->next_segment = segment->next_segment;
+  segment->next_segment->prev_segment = segment->prev_segment;
+
+  if(tld->first_segment == segment) tld->first_segment = segment->prev_segment;
+  if(tld->last_segment == segment) tld->last_segment = segment->next_segment;
+
+  segment->prev_segment = NULL;
+  segment->next_segment = NULL;
+
+}
+
+
+int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_id, void** p, size_t* area_size) {
+    mi_heap_t * heap = _mi_find_match_heap_dasics(library_id);
+    // get heap tld 
+    mi_segments_tld_t * tld = &(heap->tld->segments);
+
+    // get bitvec 
+    bool isExist = (tld->seg_bit_vectors->bit_array[library_id] & (1 << closure_id)) != 0;
+    if (!isExist) {
+      *p = NULL;
+      *area_size = 0;
+      return -1;
+    }
+
+    // how to quick find related segment? 
+    // add segment double queue? 
+
+    mi_segment_t * segment = _mi_find_id_segment_dasics(tld, closure_id);
+    *p = segment;
+    *area_size = (segment == NULL) ? 0 : segment->segment_size;
+    return 0;
+
+}
+#endif 

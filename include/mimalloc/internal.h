@@ -255,7 +255,12 @@ bool        _mi_page_is_valid(mi_page_t* page);
 // TODO: add internal functions FOR DASICS 
 #if MI_DASICS
 // Searching functions 
+mi_heap_t*  _mi_find_match_heap_and_retry_dasics(uint32_t library_id);
 mi_heap_t*  _mi_find_match_heap_dasics(uint32_t library_id);
+
+mi_segment_t * _mi_find_id_segment_dasics(mi_segments_tld_t * tld, uint32_t closure_id);
+void _mi_insert_segment_queue(mi_segments_tld_t * tld, mi_segment_t* segment);
+void _mi_remove_segment_queue(mi_segments_tld_t * tld, mi_segment_t* segment);
 #endif 
 
 
