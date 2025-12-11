@@ -345,9 +345,11 @@ mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_
 extern uint32_t global_library_id, global_closure_id;
 
 // add pointer boundery check functions
-#define LIB_ID_LOC 0
-#define CLS_ID_LOC 1
-mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept;
+#define OPT_LIBRARY 0
+#define OPT_CLOSURE 1
+mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t option) mi_attr_noexcept;
+mi_decl_export void mi_set_ids_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
+mi_decl_export uint32_t mi_get_id_dasics(uint32_t option) mi_attr_noexcept;
 mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept;
 
 #endif

@@ -264,10 +264,23 @@ void _mi_heap_guarded_init(mi_heap_t* heap) {
 uint32_t global_library_id = 0;
 uint32_t global_closure_id = 0;
 
-mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept
+mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t option) mi_attr_noexcept
 {
-  if (location == LIB_ID_LOC) global_library_id = id;
-  else if (location == CLS_ID_LOC) global_closure_id = id;
+  if (option == OPT_LIBRARY) global_library_id = id;
+  else if (option == OPT_CLOSURE) global_closure_id = id;
+}
+
+mi_decl_export void mi_set_ids_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept
+{
+  global_library_id = library_id;
+  global_closure_id = closure_id;
+}
+
+mi_decl_export uint32_t mi_get_id_dasics(uint32_t option) mi_attr_noexcept
+{
+  if (option == OPT_LIBRARY) return global_library_id;
+  else if (option == OPT_CLOSURE) return global_closure_id;
+  return -1; // default return -1, if option is invalid
 }
 
 mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept

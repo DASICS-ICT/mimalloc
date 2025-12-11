@@ -418,8 +418,7 @@ static void mi_segment_os_free(mi_segment_t* segment, mi_segments_tld_t* tld) {
   _mi_segment_map_freed_at(segment);
 
   #if MI_DASICS
-  mi_set_id_dasics(segment->library_id, LIB_ID_LOC);
-  mi_set_id_dasics(segment->closure_id, CLS_ID_LOC);
+  mi_set_ids_dasics(segment->library_id, segment->closure_id);
 
   _mi_remove_segment_queue(tld, segment);
   #endif 
@@ -1153,8 +1152,7 @@ static void mi_segment_abandon(mi_segment_t* segment, mi_segments_tld_t* tld) {
   _mi_stat_increase(&tld->stats->segments_abandoned, 1);
 
   #if MI_DASICS
-  mi_set_id_dasics(segment->library_id, LIB_ID_LOC);
-  mi_set_id_dasics(segment->closure_id, CLS_ID_LOC);
+  mi_set_ids_dasics(segment->library_id, segment->closure_id);
   _mi_remove_segment_queue(tld, segment);
   #endif 
 

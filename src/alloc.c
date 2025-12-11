@@ -772,7 +772,7 @@ mi_heap_t* _mi_find_match_heap_and_retry_dasics(uint32_t library_id) {
   // add additional step
   // if we don't find related heap, we try to alloc a new one 
   if (first_heap == NULL) {
-      mi_set_id_dasics(library_id, LIB_ID_LOC);
+      mi_set_id_dasics(library_id, OPT_LIBRARY);
       first_heap = mi_heap_new();
   }
   return first_heap;
