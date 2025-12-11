@@ -165,7 +165,7 @@ mi_decl_cache_align static const mi_tld_t tld_empty = {
   NULL, NULL,
   { MI_SEGMENT_SPAN_QUEUES_EMPTY, 0, 0, 0, 0, 0, 
     #if MI_DASICS
-    &mi_bitvec_empty, NULL, NULL,
+    (mi_bitvec_t*)&mi_bitvec_empty, NULL, NULL,
     #endif
     &mi_subproc_default, tld_empty_stats }, // segments
   { MI_STAT_VERSION, MI_STATS_NULL }       // stats
