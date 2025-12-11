@@ -580,7 +580,7 @@ static void mi_block_unguard(mi_page_t* page, mi_block_t* block, void* p) {
 }
 #endif
 
-// TODO: add free functions FOR DASICS
+// add free functions FOR DASICS
 #if MI_DASICS
 
 mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_noexcept {

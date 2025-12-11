@@ -252,7 +252,7 @@ void        _mi_padding_shrink(const mi_page_t* page, const mi_block_t* block, c
 bool        _mi_page_is_valid(mi_page_t* page);
 #endif
 
-// TODO: add internal functions FOR DASICS 
+// add internal functions FOR DASICS
 #if MI_DASICS
 // Searching functions 
 mi_heap_t*  _mi_find_match_heap_and_retry_dasics(uint32_t library_id);

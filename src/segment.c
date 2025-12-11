@@ -403,7 +403,7 @@ static void mi_segments_track_size(long segment_size, mi_segments_tld_t* tld) {
   tld->current_size += segment_size;
   if (tld->current_size > tld->peak_size) tld->peak_size = tld->current_size;
 
-  // TODO: modify closure track bit vector 
+  // modify closure track bit vector
   #if MI_DASICS
   uint32_t bitvec = tld->seg_bit_vectors->bit_array[global_library_id];
   if (segment_size >= 0) bitvec |=  (1 << global_closure_id);  // set relative closure bit
@@ -818,7 +818,7 @@ static mi_page_t* mi_segments_page_find_and_allocate(size_t slice_count, mi_aren
         // found one
         mi_segment_t* segment = _mi_ptr_segment(slice);
 
-        // TODO: check segment closure_id
+        // check segment closure_id
         #if MI_DASICS
         if (segment->closure_id != global_closure_id) continue; //???
         #endif 
@@ -1582,7 +1582,7 @@ static mi_page_t* mi_segments_page_alloc(mi_heap_t* heap, mi_page_kind_t page_ki
   size_t slices_needed = page_size / MI_SEGMENT_SLICE_SIZE;
   mi_assert_internal(slices_needed * MI_SEGMENT_SLICE_SIZE == page_size);
 
-  // TODO: check segment bit vector first 
+  // check segment bit vector first
   // if we could not find segment with matching closure_id, we should force reclaim or alloc a new segment
   #if MI_DASICS
   

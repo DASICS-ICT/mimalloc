@@ -35,7 +35,7 @@ option(MI_INSTALL_TOPLEVEL  "Install directly into $CMAKE_INSTALL_PREFIX instead
 option(MI_NO_THP            "Disable transparent huge pages support on Linux/Android for the mimalloc process only" OFF)
 option(MI_EXTRA_CPPDEFS     "Extra pre-processor definitions (use as `-DMI_EXTRA_CPPDEFS=\"opt1=val1;opt2=val2\"`)" "")
 
-# TODO: add options FOR DASICS
+# add options FOR DASICS
 option(MI_DASICS            "Use extra functions and parameters FOR DASICS" ON)
 
 # negated options for vcpkg features
@@ -278,7 +278,6 @@ if(MI_GUARDED)
   endif()
 endif()
 
-# TODO：add DASICS options 
 if(MI_DASICS)
   message(STATUS "Compile DASICS extra functions (MI_DASICS=ON)")
   list(APPEND mi_defines MI_DASICS=1)
@@ -539,7 +538,6 @@ endif()
 if(MI_TRACK_ASAN)
   set(mi_libname "${mi_libname}-asan")
 endif()
-# TODO: add DASICS version library name
 if(MI_DASICS)
   set(mi_libname "${mi_libname}-dasics")
 endif()

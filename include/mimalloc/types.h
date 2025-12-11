@@ -651,7 +651,7 @@ typedef struct mi_segments_tld_s {
   size_t              current_size; // current size of all segments
   size_t              peak_size;    // peak size of all segments
   size_t              reclaim_count;// number of reclaimed (abandoned) segments
-  // TODO: add closure track bit vector for segments 
+  // add closure track bit vector for segments
   #if MI_DASICS
   mi_bitvec_t*        seg_bit_vectors;// track bit vector for segments 
   mi_segment_t*       first_segment;
@@ -707,7 +707,7 @@ void _mi_assert_fail(const char* assertion, const char* fname, unsigned int line
 #define mi_assert_expensive(x)
 #endif
 
-// TODO: add assert FOR DASICS 
+// add assert FOR DASICS
 #if (MI_DASICS) 
 // use our own assertion to print without memory allocation
 void _mi_assert_fail_dasics(const char* assertion, const char* fname, unsigned int line, const char* func );

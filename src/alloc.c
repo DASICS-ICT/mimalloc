@@ -755,7 +755,7 @@ mi_decl_restrict void* _mi_heap_malloc_guarded(mi_heap_t* heap, size_t size, boo
 }
 #endif
 
-// TODO: add malloc functions FOR DASICS
+// add malloc functions FOR DASICS
 #if MI_DASICS
 mi_heap_t* _mi_find_match_heap_and_retry_dasics(uint32_t library_id) {
 
@@ -769,7 +769,7 @@ mi_heap_t* _mi_find_match_heap_and_retry_dasics(uint32_t library_id) {
     if (first_heap->library_id == library_id) break;
     first_heap = first_heap->next;
   }
-  // TODO: add additional step
+  // add additional step
   // if we don't find related heap, we try to alloc a new one 
   if (first_heap == NULL) {
       mi_set_id_dasics(library_id, LIB_ID_LOC);

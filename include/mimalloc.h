@@ -10,10 +10,10 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #define MI_MALLOC_VERSION 222   // major + 2 digits minor
 
-// TODO: add options FOR DASICS ???
+// add options FOR DASICS
 #if !defined(MI_DASICS)
 #define MI_DASICS 0
-#endif 
+#endif
 
 // ------------------------------------------------------
 // Compiler specific attributes
@@ -329,7 +329,7 @@ mi_decl_export void mi_collect_reduce(size_t target_thread_owned) mi_attr_noexce
 
 
 // ------------------------------------------------------
-// TODO: APIs FOR DASICS  
+// APIs FOR DASICS
 // ------------------------------------------------------
 #if MI_DASICS
 
@@ -341,10 +341,10 @@ mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_no
 mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_id, void** p, size_t* area_size) mi_attr_noexcept; 
 
 
-// TODO： add external function for push libraray id into stack 
+// add external function for push libraray id into stack
 extern uint32_t global_library_id, global_closure_id;
 
-// TODO: add pointer boundery check functions 
+// add pointer boundery check functions
 #define LIB_ID_LOC 0
 #define CLS_ID_LOC 1
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept;
