@@ -283,26 +283,6 @@ mi_decl_export uint32_t mi_get_id_dasics(uint32_t option) mi_attr_noexcept
   return -1; // default return -1, if option is invalid
 }
 
-mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept
-{
-  // simple hash function for counting library id and closure id 
-  // NOTE: only lower 48 bit is used in 64-bit address
-  uint64_t addr = (uint32_t) p; 
-  uint32_t upper = (uint32_t) ((addr >> 24) & 0xffffff);
-  uint32_t lower = (uint32_t) (addr & 0xffffff);
-
-  uint32_t library_id = 0, closure_id = 0;
-  for (size_t i = 0; i < 6; i++) {
-    library_id |= (upper & 0xf);
-    upper >>= 4;
-    closure_id |= (lower & 0xf);
-    lower >>= 4;
-  }
-  global_library_id = (library_id) & 0x3;
-  global_closure_id = (closure_id) & 0x3;
-
-}
-
 #endif 
 
 static void mi_heap_main_init(void) {

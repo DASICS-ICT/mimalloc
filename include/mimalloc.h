@@ -350,7 +350,6 @@ extern uint32_t global_library_id, global_closure_id;
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t option) mi_attr_noexcept;
 mi_decl_export void mi_set_ids_dasics(uint32_t library_id, uint32_t closure_id) mi_attr_noexcept;
 mi_decl_export uint32_t mi_get_id_dasics(uint32_t option) mi_attr_noexcept;
-mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept;
 
 #endif
 
