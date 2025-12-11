@@ -1065,36 +1065,4 @@ void* _mi_malloc_generic(mi_heap_t* heap, size_t size, bool zero, size_t huge_al
 // external functions FOR DASICS
 #if MI_DASICS
 
-// add memory bound checking function
-mi_decl_export bool mi_ptr_check_bound_dasics (void *p) mi_attr_noexcept {
-  mi_segment_t * segment = _mi_ptr_segment(p);
-  mi_page_t * page = _mi_ptr_page(p);
-   // how to check whether page is initialized?
-   // if page is not initialized we could return false
-  size_t bsize = mi_page_block_size(page); 
-  uint8_t * page_start = mi_page_start(page);
-  uint8_t * segment_page_start = _mi_segment_page_start(segment,page,&bsize);
-  mi_block_t* ref_block = (mi_page_has_aligned(page) ? _mi_page_ptr_unalign(page, p) : (mi_block_t*)p); /// ？？？ 
-
-  // how to check whether a block is used?
-  // naive method: check free list && local free list 
-  // update method: add bitmap in page (fast check)
-  bool is_used = true;
-  for (mi_block_t* block = page->free; block != NULL; block = mi_block_next(page, block)) {
-      if ((block <= ref_block) && (block+bsize >= ref_block)) {
-        is_used = false;
-        break;
-      }
-  }
-  if (is_used == false) return is_used;
-  for (mi_block_t* block = page->local_free; block != NULL; block = mi_block_next(page, block)) {
-      if ((block <= ref_block) && (block+bsize >= ref_block)) {
-        is_used = false;
-        break;
-      }
-  }
-  return is_used;
-}
-
-
 #endif 

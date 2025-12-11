@@ -349,7 +349,6 @@ extern uint32_t global_library_id, global_closure_id;
 #define CLS_ID_LOC 1
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t location) mi_attr_noexcept;
 mi_decl_export void mi_count_id_dasics(void *p) mi_attr_noexcept;
-mi_decl_export bool mi_ptr_check_bound_dasics (void *p)  mi_attr_noexcept;
 
 #endif
 
