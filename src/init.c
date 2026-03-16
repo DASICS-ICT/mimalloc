@@ -261,8 +261,8 @@ void _mi_heap_guarded_init(mi_heap_t* heap) {
 
 #if MI_DASICS
 // add global registers FOR DASICS 
-uint32_t global_library_id = 0;
-uint32_t global_closure_id = 0;
+__thread uint32_t __attribute__((tls_model("initial-exec"))) global_library_id = 0;
+__thread uint32_t __attribute__((tls_model("initial-exec"))) global_closure_id = 0;
 
 mi_decl_export void mi_set_id_dasics(uint32_t id, uint32_t option) mi_attr_noexcept
 {

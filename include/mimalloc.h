@@ -342,7 +342,8 @@ mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_
 
 
 // add external function for push libraray id into stack
-extern uint32_t global_library_id, global_closure_id;
+extern __thread uint32_t __attribute__((tls_model("initial-exec"))) global_library_id;
+extern __thread uint32_t __attribute__((tls_model("initial-exec"))) global_closure_id;
 
 // add pointer boundery check functions
 #define OPT_LIBRARY 0
