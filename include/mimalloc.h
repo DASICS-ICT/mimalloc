@@ -341,6 +341,10 @@ mi_decl_export int mi_get_heap_free_count_dasics(uint32_t library_id) mi_attr_no
 mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_id, void** p, size_t* area_size) mi_attr_noexcept; 
 
 
+// Resolve a live block containing ptr in the current thread's heaps.
+// Outputs are cleared on failure; no allocator identity or authority changes.
+mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size) mi_attr_noexcept;
+
 // add external function for push libraray id into stack
 extern __thread uint32_t __attribute__((tls_model("initial-exec"))) global_library_id;
 extern __thread uint32_t __attribute__((tls_model("initial-exec"))) global_closure_id;

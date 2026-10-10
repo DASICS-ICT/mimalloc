@@ -754,3 +754,62 @@ bool mi_heap_visit_blocks(const mi_heap_t* heap, bool visit_blocks, mi_block_vis
   mi_visit_blocks_args_t args = { visit_blocks, visitor, arg };
   return mi_heap_visit_areas(heap, &mi_heap_area_visitor, &args);
 }
+
+#if MI_DASICS
+// Only traverse metadata already owned by this thread. Deriving a segment
+// directly from an arbitrary caller address can dereference unmapped memory.
+typedef struct mi_bounds_query_s {
+  uintptr_t address;
+  mi_block_t* candidate;
+  void* base;
+  size_t size;
+} mi_bounds_query_t;
+
+static bool mi_bounds_visit_block(const mi_heap_t* heap, const mi_heap_area_t* area,
+                                 void* block, size_t block_size, void* arg) {
+  MI_UNUSED(heap); MI_UNUSED(area);
+  mi_bounds_query_t* query = (mi_bounds_query_t*)arg;
+  if (block == query->candidate && query->address >= (uintptr_t)block &&
+      query->address - (uintptr_t)block < block_size) {
+    query->base = block;
+    query->size = block_size;
+    return false;
+  }
+  return true;
+}
+
+static bool mi_bounds_visit_page(mi_heap_t* heap, mi_page_queue_t* queue,
+                                mi_page_t* page, void* arg, void* unused) {
+  MI_UNUSED(heap); MI_UNUSED(queue); MI_UNUSED(unused);
+  mi_bounds_query_t* query = (mi_bounds_query_t*)arg;
+  const uintptr_t start = (uintptr_t)mi_page_start(page);
+  const size_t bsize = mi_page_block_size(page);
+  if (bsize == 0 || page->capacity > SIZE_MAX / bsize ||
+      query->address < start || query->address - start >= page->capacity * bsize)
+    return true;
+  query->candidate = _mi_page_ptr_unalign(page, (const void*)query->address);
+  mi_heap_area_t area;
+  _mi_heap_area_init(&area, page);
+  // The existing visitor excludes free blocks after collecting local frees.
+  _mi_heap_area_visit_blocks(&area, page, &mi_bounds_visit_block, query);
+  return (query->base == NULL);
+}
+
+mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size) mi_attr_noexcept {
+  if (base != NULL) *base = NULL;
+  if (size != NULL) *size = 0;
+  if (ptr == NULL || base == NULL || size == NULL) return -1;
+  mi_heap_t* current = mi_prim_get_default_heap();
+  if (!mi_heap_is_initialized(current)) return -1;
+  mi_bounds_query_t query = { (uintptr_t)ptr, NULL, NULL, 0 };
+  for (mi_heap_t* heap = current->tld->heaps; heap != NULL; heap = heap->next) {
+    mi_heap_visit_pages(heap, &mi_bounds_visit_page, &query, NULL);
+    if (query.base != NULL) {
+      *base = query.base;
+      *size = query.size;
+      return 0;
+    }
+  }
+  return -1;
+}
+#endif
