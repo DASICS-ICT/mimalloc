@@ -18,6 +18,14 @@ static bool   mi_check_is_double_free(const mi_page_t* page, const mi_block_t* b
 static size_t mi_page_usable_size_of(const mi_page_t* page, const mi_block_t* block);
 static void   mi_stat_free(const mi_page_t* page, const mi_block_t* block);
 
+#if MI_DASICS
+static mi_free_callback_dasics_t* mi_free_callback_dasics;
+
+mi_decl_export void mi_register_free_callback_dasics(mi_free_callback_dasics_t* callback) mi_attr_noexcept {
+  mi_free_callback_dasics = callback;
+}
+#endif
+
 
 // ------------------------------------------------------
 // Free
@@ -163,6 +171,12 @@ void mi_free(void* p) mi_attr_noexcept
     mi_heap_t* const heap = _mi_find_match_heap_and_retry_dasics(global_library_id);
     mi_assert((heap != NULL));
     if (heap == NULL) return;
+    if (mi_free_callback_dasics != NULL) {
+      // FIT associates grants with the normalized block, including interior
+      // DIRECT ranges. The block must remain live throughout the callback.
+      mi_block_t* const block = _mi_page_ptr_unalign(page, p);
+      mi_free_callback_dasics(block, page->library_id, page->closure_id);
+    }
     heap->free_count++;  
   #endif 
 
@@ -274,7 +288,12 @@ static void mi_decl_noinline mi_free_block_mt(mi_page_t* page, mi_segment_t* seg
     if (_mi_segment_attempt_reclaim(mi_heap_get_default(), segment)) {
       mi_assert_internal(_mi_thread_id() == mi_atomic_load_relaxed(&segment->thread_id));
       mi_assert_internal(mi_heap_get_default()->tld->segments.subproc == segment->subproc);
+      #if MI_DASICS
+      // mi_free already checked the owner and notified FIT for this release.
+      mi_free_generic_local(page, segment, block);
+      #else
       mi_free(block);  // recursively free as now it will be a local free in our heap
+      #endif
       return;
     }
   }

@@ -343,7 +343,13 @@ mi_decl_export int mi_get_mem_area_dasics(uint32_t library_id, uint32_t closure_
 
 // Resolve a live block containing ptr in the current thread's heaps.
 // Outputs are cleared on failure; no allocator identity or authority changes.
-mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size) mi_attr_noexcept;
+mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size,
+                                           uint32_t* library_id, uint32_t* closure_id) mi_attr_noexcept;
+
+// Notify FIT after owner validation and before the block becomes free. The
+// callback must preserve allocator identity and must not allocate or free.
+typedef void (mi_cdecl mi_free_callback_dasics_t)(void* base, uint32_t library_id, uint32_t closure_id);
+mi_decl_export void mi_register_free_callback_dasics(mi_free_callback_dasics_t* callback) mi_attr_noexcept;
 
 // add external function for push libraray id into stack
 extern __thread uint32_t __attribute__((tls_model("initial-exec"))) global_library_id;

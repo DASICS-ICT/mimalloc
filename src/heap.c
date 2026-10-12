@@ -763,6 +763,8 @@ typedef struct mi_bounds_query_s {
   mi_block_t* candidate;
   void* base;
   size_t size;
+  uint32_t library_id;
+  uint32_t closure_id;
 } mi_bounds_query_t;
 
 static bool mi_bounds_visit_block(const mi_heap_t* heap, const mi_heap_area_t* area,
@@ -792,21 +794,30 @@ static bool mi_bounds_visit_page(mi_heap_t* heap, mi_page_queue_t* queue,
   _mi_heap_area_init(&area, page);
   // The existing visitor excludes free blocks after collecting local frees.
   _mi_heap_area_visit_blocks(&area, page, &mi_bounds_visit_block, query);
+  if (query->base != NULL) {
+    query->library_id = page->library_id;
+    query->closure_id = page->closure_id;
+  }
   return (query->base == NULL);
 }
 
-mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size) mi_attr_noexcept {
+mi_decl_export int mi_get_block_bounds_dasics(const void* ptr, void** base, size_t* size,
+                                           uint32_t* library_id, uint32_t* closure_id) mi_attr_noexcept {
   if (base != NULL) *base = NULL;
   if (size != NULL) *size = 0;
+  if (library_id != NULL) *library_id = 0;
+  if (closure_id != NULL) *closure_id = 0;
   if (ptr == NULL || base == NULL || size == NULL) return -1;
   mi_heap_t* current = mi_prim_get_default_heap();
   if (!mi_heap_is_initialized(current)) return -1;
-  mi_bounds_query_t query = { (uintptr_t)ptr, NULL, NULL, 0 };
+  mi_bounds_query_t query = { (uintptr_t)ptr, NULL, NULL, 0, 0, 0 };
   for (mi_heap_t* heap = current->tld->heaps; heap != NULL; heap = heap->next) {
     mi_heap_visit_pages(heap, &mi_bounds_visit_page, &query, NULL);
     if (query.base != NULL) {
       *base = query.base;
       *size = query.size;
+      if (library_id != NULL) *library_id = query.library_id;
+      if (closure_id != NULL) *closure_id = query.closure_id;
       return 0;
     }
   }
